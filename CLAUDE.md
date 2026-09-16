@@ -20,6 +20,10 @@ Never invent a type, error, endpoint or event that the interface doc doesn't def
    their own accounts and licences. Any design where Rail custodies fiat is rejected.
 2. **WhatsApp proposes; the passkey authorises.** The bot never holds a signing key, never holds a
    session, and never submits anything that moves funds. It returns a deep link; the PWA signs.
+   The bot never asks for, accepts, or displays a full bank account number — Meta's policy forbids
+   requesting financial account numbers in chat. Account details are entered in the PWA via a
+   link; chat shows `····4471` only. The bot is a structured payments bot (commands and intents),
+   never a general-purpose AI assistant — those are banned on the WhatsApp Business Platform.
 3. **No PII on-chain.** Bank details appear on-chain only as a salted `keccak256` commitment.
    Unsalted commitments are forbidden — a 10-digit NUBAN is brute-forceable in seconds.
 4. **`finalize`, `refund` and `claim` are permissionless.** No owner, pause, allowlist or backend
@@ -43,8 +47,9 @@ Never invent a type, error, endpoint or event that the interface doc doesn't def
 - **Auction and settlement windows are in block numbers, not timestamps.** Monad timestamps have 1s
   granularity and a 2s phase can't be expressed in them. Human-scale cooldowns (24h unstake) use
   timestamps.
-- Every AUSD transfer can revert for reasons outside Rail (`isFrozen`, `isTransferPaused`). Outbound
-  payouts go through `_pay`, which defers to a pull balance (`claimable`) instead of bricking an order.
+- Every AUSD transfer can revert for reasons outside Rail (`isAccountFrozen`, `isTransferPaused`,
+  `isSignatureVerificationPaused` — verified on the live implementation). Outbound payouts go through
+  `_pay`, which defers to a pull balance (`claimable`) instead of bricking an order.
 - Checks–effects–interactions on every fund-moving function, plus `nonReentrant`.
 - Custom errors, not revert strings. An event on every state transition (the indexer depends on it).
 - NatSpec on every external function.
@@ -73,12 +78,15 @@ Never invent a type, error, endpoint or event that the interface doc doesn't def
   in the variable (`amount_kobo`, `amount_ausd_units`).
 - Secrets come from environment variables only. Never log them, never commit them.
 
-## Sender UI (`web/`) — the ban list
+## Sender UI (`web/`) and WhatsApp bot (`bot/`) — the ban list
 
-The sender never sees crypto vocabulary. This must return zero hits in sender-facing UI code:
+The sender never sees crypto vocabulary — in the PWA or in WhatsApp. Beyond UX, WhatsApp's commerce
+policy forbids promoting the buying, selling or trading of virtual currency, so a crypto word in a
+bot message is a ban risk for the number. This must return zero hits in sender-facing UI code and
+in every user-visible bot string:
 
 ```bash
-grep -rniE "wallet|gas|blockchain|crypto|seed phrase|mnemonic|web3|on-chain|onchain|token|\bMON\b|metamask|tx hash|transaction hash|sign(ing)? (a )?message" web/src/app/(sender) web/src/components/sender
+grep -rniE "wallet|gas|blockchain|crypto|seed phrase|mnemonic|web3|on-chain|onchain|token|stablecoin|usdt|usdc|ausd|\bMON\b|monad|metamask|tx hash|transaction hash|sign(ing)? (a )?message" "web/src/app/(sender)" web/src/components/sender bot/src/messages
 ```
 
 Allowed: "Face ID", "passkey", "dollars", "digital dollars", "secure". LP-facing pages are exempt —

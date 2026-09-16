@@ -13,7 +13,8 @@ Status: **v1 · 16 Sep 2026 · task R1**
 | Thing | Convention |
 |---|---|
 | Chain | Monad testnet `10143` during build, mainnet `143` from R28 |
-| Stablecoin | AUSD `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`, **6 decimals** — verify on MonadScan (R4) |
+| Stablecoin | AUSD, **6 decimals**. Mainnet `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a` · Testnet `0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC` (testnet faucet `0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C`). Both proxy to implementation `0xc1e3c7d486d6a92fbe920232e439eec2ceb112da`. EIP-712 domain `"Agora Dollar"` / `"1"`. Verified on-chain 16 Sep 2026 |
+| Block time | ~300ms, ~600ms finality (monad.xyz). Block counts, not seconds, are the source of truth |
 | AUSD amounts | `uint256` base units. In Rust/TS: `amount_ausd_units` / `amountAusdUnits` |
 | Local amounts | Minor units of the local currency (kobo for NGN, pesewa for GHS). Name the unit: `local_amount_minor` |
 | Currency codes | ISO 4217 as `bytes3` on-chain (`"NGN"` = `0x4e474e`) |
@@ -76,13 +77,13 @@ the attestor reports delivery.
 
 ### Timing (constructor parameters, immutable)
 
-| Parameter | Demo value | Meaning |
-|---|---|---|
-| `commitBlocks` | 5 | `commitEnd = creationBlock + commitBlocks` |
-| `revealBlocks` | 5 | `revealEnd = commitEnd + revealBlocks` |
-| `payoutBlocks` | 1500 | `payoutDeadline = revealEnd + payoutBlocks` |
-| `disputeBlocks` | 150 | `disputeEnd = markPaidBlock + disputeBlocks` |
-| `resolutionBlocks` | 1500 | `resolutionEnd = disputeBlock + resolutionBlocks` |
+| Parameter | Demo value | ≈ at 300ms | Meaning |
+|---|---|---|---|
+| `commitBlocks` | 5 | 1.5s | `commitEnd = creationBlock + commitBlocks` |
+| `revealBlocks` | 5 | 1.5s | `revealEnd = commitEnd + revealBlocks` |
+| `payoutBlocks` | 2000 | 10 min | `payoutDeadline = revealEnd + payoutBlocks` |
+| `disputeBlocks` | 200 | 60s | `disputeEnd = markPaidBlock + disputeBlocks` |
+| `resolutionBlocks` | 2000 | 10 min | `resolutionEnd = disputeBlock + resolutionBlocks` |
 | `collateralBps` | 11000 | Collateral locked for the leading bid, `ceil(bid × bps / 10000)`. Must be ≥ 10000 |
 | `minStake` (registry) | 100 AUSD | Total active stake an LP needs before it may commit |
 | `unstakeCooldown` (registry) | 86400 s | Wall-clock delay between `requestUnstake` and `withdraw` |
@@ -312,8 +313,11 @@ Sender-facing. Holds MON for gas and nothing else. One signer key.
 | `GET /v1/banks?currency=NGN` | — | `[{ code, name }]` |
 | `GET /v1/accounts/resolve?currency=NGN&bankCode=058&accountNumber=0001234567` | — | `{ accountName }` via Paystack `GET /bank/resolve`. `ACCOUNT_NOT_RESOLVED` on failure |
 | `GET /v1/quote?currency=NGN&localAmount=5000000` | — | `{ currency, localAmount, indicativeAusd, maxAusd, fee, relayer, attestor, rate, expiresAt }` |
-| `POST /v1/drafts` | `{ currency, localAmount, recipient: { bankCode, accountNumber }, source: "whatsapp" }` | `{ draftId, url }` — `url = https://<domain>/c/<draftId>`. 128-bit random id, expires in 15 min |
-| `GET /v1/drafts/:draftId` | — | `{ currency, localAmount, recipient: { bankCode, bankName, accountNumber, accountName } }` |
+| `POST /v1/contact-links` 🔑bot | `{ waId, contactName }` | `{ url }` — `url = https://<domain>/k/<token>`, single use, expires in 15 min |
+| `POST /v1/contacts` | `{ token, currency, bankCode, accountNumber }` | Resolves the name via Paystack, stores the contact against the link's `waId`. Returns `{ contactId, contactName, accountName, bankName, accountLast4 }` |
+| `GET /v1/contacts?waId=` 🔑bot | — | `[{ contactId, contactName, accountName, bankName, accountLast4 }]` — **never the full number** |
+| `POST /v1/drafts` 🔑bot | `{ waId, contactId, currency, localAmount }` | `{ draftId, url }` — `url = https://<domain>/c/<draftId>`. 128-bit random id, expires in 15 min |
+| `GET /v1/drafts/:draftId` | — | `{ currency, localAmount, recipient: { bankCode, bankName, accountNumber, accountName } }` — the full number is shown only inside the PWA |
 | `POST /v1/orders` | `{ intent, authorization, recipient: { bankCode, accountNumber, accountName, salt } }` | `{ orderId, txHash }` |
 | `GET /v1/orders/:orderId` | — | `{ orderId, status, winner, winningBid, maxAusd, change, narration, blocks: {...}, txs: [...] }` |
 | `POST /v1/orders/:orderId/dispute` | `{ signature }` | `{ txHash }` |
@@ -385,11 +389,17 @@ Loop per `OrderCreated`: filter by currency, max size and **attestor allowlist**
 - `GET /webhook` — Meta verification (`hub.verify_token`).
 - `POST /webhook` — reject unless `X-Hub-Signature-256` HMAC-SHA256 over the raw body with the app
   secret verifies.
-- Commands: `send <amount> to <contact>`, `add <contact> <bank> <accountNumber>`, `contacts`, `help`.
-  Amounts accept `50k`, `50,000`, `₦50000`.
-- `add` resolves via `GET /v1/accounts/resolve` and echoes the name for confirmation.
-- `send` calls `POST /v1/drafts` + `GET /v1/quote`, replies with name, masked account, amount,
-  indicative price and the deep link.
+- Calls to 🔑bot relayer endpoints carry `Authorization: Bearer <BOT_API_KEY>`.
+- **Structured commands only** — no open-domain assistant (banned on the Business Platform since
+  15 Jan 2026): `send <amount> to <contact>`, `add <contact>`, `contacts`, `balance`, `help`.
+  Amounts accept `50k`, `50,000`, `₦50000`. Anything else → `help`.
+- `add <contact>` calls `POST /v1/contact-links` and replies with the link. **The bot never asks for,
+  accepts, or echoes a full account number.** If a user pastes a 10-digit number, the bot doesn't
+  store it and replies with the link instead.
+- `send` calls `GET /v1/contacts` + `POST /v1/drafts` + `GET /v1/quote`, replies with account name,
+  bank, `····<last4>`, amount in naira, indicative price in dollars, and the deep link.
+- `balance` reads the linked account's balance (read-only) and replies in dollars.
+- Every user-visible string lives in `bot/src/messages` and passes the ban list in `CLAUDE.md`.
 - **Never** holds a key, calls `POST /v1/orders`, or signs anything.
 
 ### 5.5 `web` — Next.js PWA
@@ -397,7 +407,9 @@ Loop per `OrderCreated`: filter by currency, max size and **attestor allowlist**
 | Route | Audience | Purpose |
 |---|---|---|
 | `/` | sender | Amount + recipient → quote → Face ID → done |
+| `/fund` | sender | Add dollars by card / Apple Pay / bank transfer via the embedded Ramp Network widget (AUSD on Monad; UK + US). Rail never touches the fiat |
 | `/c/[draftId]` | sender | Confirm a WhatsApp draft → Face ID |
+| `/k/[token]` | sender | Add a contact's bank details (from a WhatsApp `add` link) |
 | `/o/[orderId]` | sender | Live status |
 | `/r/[orderId]` | recipient | "I received ₦X" one tap (L1) |
 | `/lp` | LP | Privy/Dynamic login, stake, live orders, earnings, reputation |
