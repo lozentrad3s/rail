@@ -1,0 +1,418 @@
+# Rail — Interfaces
+
+**This is the contract between modules.** Implement from this file, not from a description of it.
+If code and this file disagree, this file wins; if this file is wrong, change it first, in its own
+commit, then the code. Governed by `CLAUDE.md`.
+
+Status: **v1 · 16 Sep 2026 · task R1**
+
+---
+
+## 1 · Conventions
+
+| Thing | Convention |
+|---|---|
+| Chain | Monad testnet `10143` during build, mainnet `143` from R28 |
+| Stablecoin | AUSD `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`, **6 decimals** — verify on MonadScan (R4) |
+| AUSD amounts | `uint256` base units. In Rust/TS: `amount_ausd_units` / `amountAusdUnits` |
+| Local amounts | Minor units of the local currency (kobo for NGN, pesewa for GHS). Name the unit: `local_amount_minor` |
+| Currency codes | ISO 4217 as `bytes3` on-chain (`"NGN"` = `0x4e474e`) |
+| Order id | `bytes32` — the EIP-712 hash of the `OrderIntent` (§3.2). Also the EIP-3009 `nonce` |
+| Windows | Block numbers. All window ends are **inclusive**: "during commit" means `block.number <= commitEnd` |
+| Time on HTTP | Unix seconds, integers |
+| Addresses on HTTP | `0x`-prefixed lowercase hex. `bytes32` likewise |
+| Big numbers on HTTP | Decimal **strings** (`"32600000"`), never JSON numbers |
+
+---
+
+## 2 · Order state machine
+
+```
+             createOrder
+                 │
+                 ▼
+               OPEN ── commit (≤ commitEnd) ── reveal (commitEnd < b ≤ revealEnd)
+                 │
+      b > revealEnd, no leading bid          b > revealEnd, leading bid exists
+                 │                                        │  (lazy: any call awards)
+                 ▼                                        ▼
+            CANCELLED                                  AWARDED
+     (maxAusd → sender)                    ┌─────────────┼───────────────────────┐
+                                  markPaid │ (winner,    │ attested              │ b > payoutDeadline
+                                           │ b ≤ payout- │ ─────────► finalize   │ and not attested
+                                           ▼ Deadline)   │                       ▼
+                                         PAID ───────────┤                   refund ──► REFUNDED
+                                           │             │                   (maxAusd + slashed
+                        dispute (sender,   │             │                    collateral → sender)
+                        b ≤ disputeEnd)    │             │                       ▲
+                                           ▼             │                       │
+                                       DISPUTED ─────────┤ attested              │ b > resolutionEnd
+                                           │             ▼                       │ and not attested
+                                           │         SETTLED ◄── finalize ── PAID, b > disputeEnd
+                                           │   (bid → LP, maxAusd − bid → sender)
+                                           └─────────────────────────────────────┘
+```
+
+| From | Call | Who | Condition | To |
+|---|---|---|---|---|
+| — | `createOrder` | anyone holding the sender's signature | valid authorization, order id unused, not paused | `Open` |
+| `Open` | `commitBid` | eligible LP | `b ≤ commitEnd` | `Open` |
+| `Open` | `revealBid` | committed LP | `commitEnd < b ≤ revealEnd` | `Open` |
+| `Open` | `closeAuction` | **anyone** | `b > revealEnd`, leading bid | `Awarded` |
+| `Open` | `closeAuction` / `refund` | **anyone** | `b > revealEnd`, no leading bid | `Cancelled` |
+| `Awarded` | `markPaid` | winner | `b ≤ payoutDeadline` | `Paid` |
+| `Paid` | `dispute` | sender (direct or signature) | `b ≤ disputeEnd` | `Disputed` |
+| `Awarded`/`Paid`/`Disputed` | `finalize` | **anyone** | attestor says delivered | `Settled` |
+| `Paid` | `finalize` | **anyone** | `b > disputeEnd` (L0 optimistic) | `Settled` |
+| `Awarded` | `refund` | **anyone** | `b > payoutDeadline` **and not attested** | `Refunded` |
+| `Disputed` | `refund` | **anyone** | `b > resolutionEnd` **and not attested** | `Refunded` |
+
+`markPaid`, `dispute`, `finalize` and `refund` all award lazily: if the order is `Open` past
+`revealEnd` with a leading bid, they first transition it to `Awarded` (emitting `OrderAwarded`).
+
+**Evidence dominates.** A positive attestation settles an order from `Awarded`, `Paid` or `Disputed`
+at any time — including after `payoutDeadline` or during a dispute. A refund is impossible while
+the attestor reports delivery.
+
+### Timing (constructor parameters, immutable)
+
+| Parameter | Demo value | Meaning |
+|---|---|---|
+| `commitBlocks` | 5 | `commitEnd = creationBlock + commitBlocks` |
+| `revealBlocks` | 5 | `revealEnd = commitEnd + revealBlocks` |
+| `payoutBlocks` | 1500 | `payoutDeadline = revealEnd + payoutBlocks` |
+| `disputeBlocks` | 150 | `disputeEnd = markPaidBlock + disputeBlocks` |
+| `resolutionBlocks` | 1500 | `resolutionEnd = disputeBlock + resolutionBlocks` |
+| `collateralBps` | 11000 | Collateral locked for the leading bid, `ceil(bid × bps / 10000)`. Must be ≥ 10000 |
+| `minStake` (registry) | 100 AUSD | Total active stake an LP needs before it may commit |
+| `unstakeCooldown` (registry) | 86400 s | Wall-clock delay between `requestUnstake` and `withdraw` |
+
+> **`disputeBlocks` is the only thing between a lying LP and the escrow when no attestor has
+> spoken.** 150 blocks (~60s) is a demo value. Production is hours.
+
+---
+
+## 3 · Signed messages
+
+### 3.1 AUSD `ReceiveWithAuthorization` (EIP-3009) — signed by the sender's passkey account
+
+Domain: read from the token via EIP-5267 `eip712Domain()` — do **not** hardcode name/version.
+
+```
+ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)
+```
+
+| Field | Value |
+|---|---|
+| `from` | sender |
+| `to` | `RailCore` address |
+| `value` | `maxAusd + fee` |
+| `validAfter` | `0` or now − 60 |
+| `validBefore` | quote expiry (now + 120) |
+| `nonce` | **`orderId`** from §3.2 |
+
+Binding the order id into the nonce is what stops a relayer altering recipient, amount, currency,
+fee or attestor: any change produces a different nonce and the token rejects the signature.
+
+### 3.2 `OrderIntent` → `orderId`
+
+Domain: `{ name: "Rail", version: "1", chainId, verifyingContract: RailCore }`
+
+```
+OrderIntent(address sender,bytes32 recipientCommitment,bytes3 currency,uint256 localAmount,uint256 maxAusd,uint256 fee,address relayer,address attestor,bytes32 salt)
+```
+
+`orderId = hashTypedData(domain, OrderIntent)` — in viem, `hashTypedData({ domain, types, primaryType: "OrderIntent", message })`.
+Not signed on its own. `RailCore.hashIntent(intent)` returns the same value.
+
+| Field | Meaning |
+|---|---|
+| `sender` | Passkey-derived EOA paying AUSD |
+| `recipientCommitment` | §3.5 |
+| `currency` | `bytes3`, e.g. `"NGN"` |
+| `localAmount` | Exact local-currency minor units the recipient must receive |
+| `maxAusd` | Reserve price. The most the sender will pay. Change returns to sender |
+| `fee` | Relayer fee in AUSD units, paid at creation, non-refundable. May be 0 |
+| `relayer` | Receives `fee`. Must be non-zero if `fee > 0` |
+| `attestor` | `IAttestor` the sender accepts as evidence, or `address(0)` for optimistic-only |
+| `salt` | Random `bytes32` so identical sends produce distinct orders |
+
+### 3.3 `Dispute` — signed by the sender
+
+Domain: same as §3.2.
+
+```
+Dispute(bytes32 orderId)
+```
+
+### 3.4 `Attestation` — signed by an attestor signer key
+
+Domain: `{ name: "RailSignedAttestor", version: "1", chainId, verifyingContract: SignedAttestor }`
+
+```
+Attestation(bytes32 orderId,bytes32 evidenceHash)
+```
+
+`evidenceHash = keccak256(evidence bytes)` — the raw SMS body, confirmation record, or CRE report.
+Evidence itself stays off-chain.
+
+### 3.5 Recipient commitment
+
+```
+recipientCommitment = keccak256(abi.encode(string bankCode, string accountNumber, bytes32 salt))
+```
+
+`salt` is 32 random bytes generated on the sender's device. **Never unsalted.** In viem:
+`keccak256(encodeAbiParameters(parseAbiParameters("string, string, bytes32"), [bankCode, accountNumber, salt]))`.
+In alloy: `keccak256((bankCode, accountNumber, salt).abi_encode_params())`.
+
+### 3.6 Bid commitment
+
+```
+commitment = keccak256(abi.encode(bytes32 orderId, address lp, uint256 amount, bytes32 salt))
+```
+
+Includes `lp` so a copied commitment can't be revealed by anyone else. `RailCore.computeCommitment`
+returns the same value. **The matcher persists `(orderId, amount, salt)` to disk before sending the
+commit** — a lost salt is a lost bid.
+
+### 3.7 Narration reference
+
+```
+narration = "RAIL" + uppercase(hex(orderId)[2..10])      // e.g. RAILA8F2C3D1
+```
+
+12 characters, alphanumeric only — survives banks that strip punctuation or truncate narration.
+The LP puts this in the transfer narration; the SMS parser matches on it.
+
+---
+
+## 4 · Contracts
+
+Solidity interfaces live in `contracts/src/interfaces/IRail.sol` and are authoritative for exact
+signatures, events and errors. This section defines semantics.
+
+### 4.1 `IERC3009` (subset of AUSD used by Rail)
+
+```solidity
+function receiveWithAuthorization(address from, address to, uint256 value, uint256 validAfter,
+    uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s) external;
+function authorizationState(address authorizer, bytes32 nonce) external view returns (bool);
+```
+
+### 4.2 `IAttestor`
+
+```solidity
+function isDelivered(bytes32 orderId) external view returns (bool);
+```
+
+**Positive-only.** An attestor can make an order settle sooner. It cannot cause a refund or a slash.
+`RailCore` calls it by `staticcall` with a fixed gas stipend (`ATTESTOR_GAS = 50_000`), reads at
+most 32 bytes, and treats revert / short return / anything other than `true` as "not delivered".
+Callers of `finalize`/`refund` must supply enough gas for the stipend or the call reverts with
+`InsufficientGas` — so a gas-starved call can't skip an attestation.
+
+### 4.3 `RailCore`
+
+```solidity
+enum Status { None, Open, Awarded, Paid, Disputed, Settled, Refunded, Cancelled }
+
+struct OrderIntent {
+    address sender; bytes32 recipientCommitment; bytes3 currency; uint256 localAmount;
+    uint256 maxAusd; uint256 fee; address relayer; address attestor; bytes32 salt;
+}
+struct Authorization { uint256 validAfter; uint256 validBefore; uint8 v; bytes32 r; bytes32 s; }
+
+struct Order {
+    address sender;  Status status; bytes3 currency; uint64 commitEnd;
+    address winner;  uint64 revealEnd;
+    address attestor; uint64 payoutDeadline;
+    uint128 maxAusd; uint128 winningBid;
+    bytes32 recipientCommitment;
+    uint256 localAmount;
+    uint64 disputeEnd; uint64 resolutionEnd;
+}
+```
+
+| Function | Access | Effect |
+|---|---|---|
+| `createOrder(OrderIntent, Authorization) → bytes32 orderId` | anyone | Pulls `maxAusd + fee` via `receiveWithAuthorization` with `nonce = orderId`; pays `fee` to `relayer`; opens the order |
+| `commitBid(bytes32 orderId, bytes32 commitment)` | `registry.isEligible(msg.sender)` | Stores/overwrites the LP's commitment |
+| `revealBid(bytes32 orderId, uint256 amount, bytes32 salt)` | committed LP | Verifies commitment. Requires `0 < amount ≤ maxAusd`. If strictly lower than the leading bid (ties: earlier reveal keeps the lead): releases the previous leader's lock and locks `ceil(amount × collateralBps / 10000)` of the new leader's free stake — reverts if the LP can't cover it |
+| `closeAuction(bytes32)` | anyone | `Open` past `revealEnd` → `Awarded` or `Cancelled` (refunds `maxAusd`) |
+| `markPaid(bytes32)` | winner | `Awarded` → `Paid`, starts dispute window |
+| `dispute(bytes32 orderId, bytes signature)` | sender, or anyone with the sender's `Dispute` signature (empty `signature` when `msg.sender == sender`) | `Paid` → `Disputed`, starts resolution window |
+| `finalize(bytes32)` | anyone | → `Settled`. Pays `winningBid` to winner, `maxAusd − winningBid` to sender, releases collateral |
+| `refund(bytes32)` | anyone | → `Cancelled` (no bid) or `Refunded` (default: returns `maxAusd` + slashed collateral to sender) |
+| `claim(address account)` | anyone | Pays `claimable[account]` to `account` |
+| `setCreatePaused(bool)` | owner | Gates `createOrder` **only**. Nothing else is pausable |
+
+Views: `getOrder(bytes32) → Order`, `hashIntent(OrderIntent) → bytes32`,
+`computeCommitment(bytes32, address, uint256, bytes32) → bytes32`, `commitmentOf(bytes32, address) → bytes32`,
+`collateralFor(uint256 bid) → uint256`, `canFinalize(bytes32) → bool`, `canRefund(bytes32) → bool`,
+`claimable(address) → uint256`, and the immutable parameters.
+
+**Deferred payouts.** Every outbound AUSD transfer goes through `_pay(to, amount)`. If the token
+reverts (recipient frozen, transfers paused) the amount is credited to `claimable[to]` and
+`PaymentDeferred` is emitted — the order still completes. `claim` retries later.
+
+### 4.4 `LPRegistry`
+
+| Function | Access | Effect |
+|---|---|---|
+| `stake(uint256)` | anyone | `transferFrom` AUSD in; increases `staked` |
+| `requestUnstake(uint256)` | LP | Moves `amount` from free stake to `pendingUnstake`; `unlockAt = now + unstakeCooldown` (a new request resets the timer) |
+| `withdraw()` | LP | After `unlockAt`, transfers all `pendingUnstake` |
+| `setRail(address)` | deployer, **once** | Links `RailCore`. No other admin exists |
+| `lock(bytes32 orderId, address lp, uint256)` | `RailCore` | Requires free stake ≥ amount. One lock per order |
+| `unlock(bytes32 orderId)` | `RailCore` | Releases a lock (outbid). No stats change |
+| `settle(bytes32 orderId, uint256 volume)` | `RailCore` | Releases the lock; `settled += 1`, `volumeSettled += volume` |
+| `slash(bytes32 orderId) → (address lp, uint256 amount)` | `RailCore` | Removes the locked amount from the LP's stake, transfers it to `RailCore`; `defaults += 1` |
+| `recordCommit/recordReveal/recordWin(address lp)` | `RailCore` | Increment counters |
+
+Views: `accountOf(lp) → (staked, locked, pendingUnstake, unlockAt)`, `freeStake(lp) = staked − locked`,
+`isEligible(lp) = staked ≥ minStake`, `statsOf(lp) → Stats`, `reliabilityBps(lp) = (settled + 1) × 10000 / (settled + defaults + 2)`,
+`lockOf(orderId) → (lp, amount)`.
+
+`Stats { uint64 commits; uint64 reveals; uint64 wins; uint64 settled; uint64 defaults; uint128 volumeSettled; }`
+— append-only, no setter.
+
+### 4.5 `SignedAttestor is IAttestor`
+
+| Function | Access | Effect |
+|---|---|---|
+| `attest(bytes32 orderId, bytes32 evidenceHash, bytes signature)` | anyone | Recovers signer from §3.4. Requires `signerLayer[signer] > 0`. Records the attestation if its layer is higher than the existing one. Permanent — no revocation |
+| `setSigner(address signer, uint8 layer)` | owner | `layer` 1 = recipient confirmation (L1), 2 = SMS alert (L2), 3 = CRE (L3), 0 = remove |
+| `isDelivered(bytes32) → bool` | view | `recordOf(orderId).layer ≥ minLayer` (and > 0) |
+
+Immutable `minLayer` — deploy one instance per trust policy.
+
+**L0 is not an attestor.** It's `RailCore`'s dispute window. A pluggable L0 could be unplugged; a
+native one can't.
+
+---
+
+## 5 · Services
+
+All services: JSON over HTTPS, error envelope below, `GET /healthz → 200 {"ok":true}`.
+
+```json
+{ "error": { "code": "QUOTE_EXPIRED", "message": "human readable" } }
+```
+
+Error codes: `BAD_REQUEST` `UNAUTHORIZED` `NOT_FOUND` `QUOTE_EXPIRED` `ACCOUNT_NOT_RESOLVED`
+`COMMITMENT_MISMATCH` `SIMULATION_FAILED` `SUBMISSION_FAILED` `NOT_WINNER` `RATE_LIMITED` `INTERNAL`.
+
+### 5.1 `rail-relayer` (Rust · axum + alloy)
+
+Sender-facing. Holds MON for gas and nothing else. One signer key.
+
+| Endpoint | Body / query | Returns |
+|---|---|---|
+| `GET /v1/banks?currency=NGN` | — | `[{ code, name }]` |
+| `GET /v1/accounts/resolve?currency=NGN&bankCode=058&accountNumber=0001234567` | — | `{ accountName }` via Paystack `GET /bank/resolve`. `ACCOUNT_NOT_RESOLVED` on failure |
+| `GET /v1/quote?currency=NGN&localAmount=5000000` | — | `{ currency, localAmount, indicativeAusd, maxAusd, fee, relayer, attestor, rate, expiresAt }` |
+| `POST /v1/drafts` | `{ currency, localAmount, recipient: { bankCode, accountNumber }, source: "whatsapp" }` | `{ draftId, url }` — `url = https://<domain>/c/<draftId>`. 128-bit random id, expires in 15 min |
+| `GET /v1/drafts/:draftId` | — | `{ currency, localAmount, recipient: { bankCode, bankName, accountNumber, accountName } }` |
+| `POST /v1/orders` | `{ intent, authorization, recipient: { bankCode, accountNumber, accountName, salt } }` | `{ orderId, txHash }` |
+| `GET /v1/orders/:orderId` | — | `{ orderId, status, winner, winningBid, maxAusd, change, narration, blocks: {...}, txs: [...] }` |
+| `POST /v1/orders/:orderId/dispute` | `{ signature }` | `{ txHash }` |
+| `POST /v1/orders/:orderId/payout-details` | `{ lp, issuedAt, signature }` | `{ bankCode, bankName, accountNumber, accountName, currency, localAmount, narration }` |
+
+**`POST /v1/orders`** must, in order: recompute `orderId` from `intent`; verify
+`recipientCommitment` against `recipient`; check `authorization.validBefore > now + 10`; simulate
+`createOrder` with `eth_call`; store recipient details (encrypted at rest, keyed by `orderId`);
+submit with explicit `gas = simulatedGas × 1.2`; return the hash without waiting for inclusion.
+
+**`quote`**: `rate` is local-currency units per 1 USD as a decimal string. `indicativeAusd` =
+`localAmount / rate` at the reference rate (median clearing price of the last 20 settled orders
+for the currency, fallback to a configured rate). `maxAusd = indicativeAusd × (1 + RESERVE_BUFFER_BPS/10000)`.
+`expiresAt = now + 120`.
+
+**`payout-details`** authenticates the LP: `signature` is EIP-191 `personal_sign` over
+`"Rail payout details\norder: <orderId>\nissuedAt: <issuedAt>"`; `|now − issuedAt| ≤ 120`; the
+recovered address must equal `getOrder(orderId).winner` and the derived status must be `Awarded`,
+`Paid` or `Disputed`. Otherwise `NOT_WINNER`.
+
+**Nonce management.** A single submission task owns the signer nonce: initialised from
+`eth_getTransactionCount(signer, "pending")`, incremented locally per send, resynced on
+`nonce too low`/`nonce too high`. Handlers enqueue over an `mpsc` channel and await a oneshot.
+Acceptance (R6): 20 concurrent `POST /v1/orders` produce 20 distinct nonces and 20 inclusions.
+
+### 5.2 `rail-attestor` (Rust)
+
+Holds attestor signer keys (one per layer). Never holds funds.
+
+| Endpoint | Body | Effect |
+|---|---|---|
+| `POST /v1/confirm` | `{ orderId, token }` | **L1.** `token = base64url(HMAC-SHA256(CONFIRM_SECRET, orderId))[0..22]`. Verifies, signs an `Attestation` with the L1 key (`evidenceHash = keccak256("recipient-confirm:" ‖ orderId ‖ unix)`), submits `attest` |
+| `POST /v1/sms` | `{ device, sms: { from, body, receivedAt }, signature }` | **L2.** `signature` is the device key's EIP-191 signature over `keccak256(body) ‖ receivedAt`; `device` must be on the allowlist. Re-parses `body` server-side, extracts amount and narration, finds the order by narration, requires `amount == localAmount`, signs with the L2 key (`evidenceHash = keccak256(body)`), submits `attest` |
+| `POST /v1/webhooks/mono` | Mono payload | Optional. Verifies signature header, matches LP debit on amount + narration, signs L2 |
+
+**Sweeper** (background task): for every non-terminal order, call `closeAuction` after `revealEnd`,
+`finalize` when `canFinalize`, `refund` when `canRefund`. These calls are permissionless — the
+sweeper is a convenience, never a dependency.
+
+The recipient confirmation link is `https://<domain>/r/<orderId>?t=<token>`, generated by the
+relayer (same `CONFIRM_SECRET`).
+
+### 5.3 `rail-matcher` (Rust) — reference LP bot
+
+```rust
+#[async_trait]
+pub trait PriceSource: Send + Sync {
+    /// AUSD base units the LP wants in exchange for delivering `local_amount_minor`.
+    async fn price(&self, currency: Currency, local_amount_minor: U256) -> Result<U256, MatcherError>;
+}
+
+#[async_trait]
+pub trait PayoutRail: Send + Sync {
+    async fn pay(&self, order_id: B256, details: PayoutDetails) -> Result<PayoutReceipt, MatcherError>;
+}
+```
+
+Implementations: `StaticRate { rate, spread_bps }`, `AzaQuote` (R20); `ManualPayout` (notifies the
+operator, waits for their confirmation), `AzaPayout` (R20).
+
+Loop per `OrderCreated`: filter by currency, max size and **attestor allowlist** → `price` → skip if
+`bid > maxAusd` → persist `(orderId, bid, salt)` → `commitBid` → wait for `commitEnd + 1` →
+`revealBid` → wait for `revealEnd + 1` → if `winner == self`: `closeAuction` if still `Open`, fetch
+`payout-details`, `pay`, `markPaid`. Config via env: `LP_PRIVATE_KEY`, `RPC_URL`, `RAIL_CORE`,
+`CURRENCIES`, `SPREAD_BPS`, `MAX_ORDER_AUSD`, `ATTESTOR_ALLOWLIST`, `RELAYER_URL`.
+
+### 5.4 `bot` — WhatsApp Cloud API
+
+- `GET /webhook` — Meta verification (`hub.verify_token`).
+- `POST /webhook` — reject unless `X-Hub-Signature-256` HMAC-SHA256 over the raw body with the app
+  secret verifies.
+- Commands: `send <amount> to <contact>`, `add <contact> <bank> <accountNumber>`, `contacts`, `help`.
+  Amounts accept `50k`, `50,000`, `₦50000`.
+- `add` resolves via `GET /v1/accounts/resolve` and echoes the name for confirmation.
+- `send` calls `POST /v1/drafts` + `GET /v1/quote`, replies with name, masked account, amount,
+  indicative price and the deep link.
+- **Never** holds a key, calls `POST /v1/orders`, or signs anything.
+
+### 5.5 `web` — Next.js PWA
+
+| Route | Audience | Purpose |
+|---|---|---|
+| `/` | sender | Amount + recipient → quote → Face ID → done |
+| `/c/[draftId]` | sender | Confirm a WhatsApp draft → Face ID |
+| `/o/[orderId]` | sender | Live status |
+| `/r/[orderId]` | recipient | "I received ₦X" one tap (L1) |
+| `/lp` | LP | Privy/Dynamic login, stake, live orders, earnings, reputation |
+| `/explorer` | public | Auctions, clearing rates, settlement times (from indexer) |
+
+Passkeys: Mera, `rpId` = production domain, account path `m/44'/60'/0'/0/0`.
+
+### 5.6 `android` — SMS attestor
+
+Reads incoming SMS from an allowlist of bank sender ids, parses with the R8 corpus patterns, and
+`POST /v1/sms` with a device key generated on first launch (address shown for allowlisting). On parse
+failure it opens `/r/<orderId>` so the recipient can confirm manually (L1 fallback).
+
+### 5.7 `indexer` — Envio HyperIndex
+
+Entities: `Order` (all fields + status timeline + blocks), `Bid` (commit/reveal, amount, leading),
+`LiquidityProvider` (stake, stats), `Attestation`, `CurrencyDayStat` (volume, count, median bid
+rate, median settlement blocks). Sourced from the events in `IRail.sol` only.
