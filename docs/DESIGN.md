@@ -48,6 +48,8 @@ Art-directed chapters, not a theme toggle: the page alternates **Night** (Monad'
 | `--accent` | `#6E54FF` | Monad purple — primary actions, the winning bid, links (white text 4.8:1) |
 | `--accent-soft` | `#DDD7FE` | Accent tints, selected states |
 | `--signal` | `#85E6FF` | Monad cyan — the block ticker, live indicators (night only) |
+| `--caution` | `#FFAE45` | Monad orange — a bid skipped for insufficient stake (night only). Not an error, not a slash |
+| `--chat` | `#F3EFE7` | Chat wallpaper inside the phone mockup — warm, deliberately not WhatsApp's own colours |
 | `--money` | `#12B76A` | Money arrived — fills and dots only |
 | `--money-text` | `#067647` | Money arrived — text on paper (5.8:1) |
 | `--slash` | `#F04438` | Collateral slashed — fills only |
@@ -74,6 +76,7 @@ Size-specific tracking and leading — never one value for all sizes:
 
 | Style | Size | Leading | Tracking | Weight |
 |---|---|---|---|---|
+| `hero` | `clamp(2.75rem, 1.1rem + 4.6vw, 5rem)` | 0.98 | −0.035em | 600 |
 | `display` | `clamp(2.75rem, 1.2rem + 5.2vw, 5.5rem)` | 0.98 | −0.035em | 600 |
 | `h2` | `clamp(2rem, 1.1rem + 3vw, 3.5rem)` | 1.04 | −0.028em | 600 |
 | `h3` | `1.5rem` | 1.2 | −0.015em | 600 |
@@ -140,6 +143,11 @@ Serif accents render ~8% larger than the surrounding sans to match x-height.
 - Autoplaying sequences (hero chat, auction) **pause when offscreen** and **replay on demand**.
 - `prefers-reduced-motion: reduce` → no movement; content cross-fades and sequences render their
   final state with a "Play" button.
+- **Scroll reveals are progressive enhancement.** The server renders everything visible; only
+  elements that start below the fold are hidden after hydration, then revealed with a CSS
+  transition. A slow or failed script must never leave a blank section.
+- **The primary call to action is never a dead end.** It resolves to WhatsApp → pilot sign-up →
+  the auction simulation, whichever exists.
 
 ---
 

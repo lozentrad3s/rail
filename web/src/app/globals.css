@@ -1,0 +1,403 @@
+@import "tailwindcss";
+
+/* Tokens — docs/DESIGN.md is the source of truth. Never hardcode these in components. */
+@theme {
+  --color-night: #0e091c;
+  --color-night-raised: #18122b;
+  --color-night-line: rgb(255 255 255 / 0.08);
+  --color-night-text: #f4f2fa;
+  --color-night-muted: #a7a1bd;
+
+  --color-paper: #faf9f6;
+  --color-surface: #ffffff;
+  --color-line: rgb(14 9 28 / 0.08);
+  --color-ink: #0e091c;
+  --color-ink-muted: #57516a;
+
+  --color-accent: #6e54ff;
+  --color-accent-soft: #ddd7fe;
+  --color-signal: #85e6ff;
+  --color-caution: #ffae45;
+  --color-money: #12b76a;
+  --color-money-text: #067647;
+  --color-slash: #f04438;
+  --color-slash-text: #b42318;
+  --color-chat: #f3efe7;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-roboto-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  --text-display: clamp(2.75rem, 1.2rem + 5.2vw, 5.5rem);
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 600;
+  --text-hero: clamp(2.75rem, 1.1rem + 4.6vw, 5rem);
+  --text-hero--line-height: 0.98;
+  --text-hero--letter-spacing: -0.035em;
+  --text-hero--font-weight: 600;
+  --text-h2: clamp(2rem, 1.1rem + 3vw, 3.5rem);
+  --text-h2--line-height: 1.04;
+  --text-h2--letter-spacing: -0.028em;
+  --text-h2--font-weight: 600;
+  --text-h3: 1.5rem;
+  --text-h3--line-height: 1.2;
+  --text-h3--letter-spacing: -0.015em;
+  --text-h3--font-weight: 600;
+  --text-lead: clamp(1.125rem, 1rem + 0.5vw, 1.3125rem);
+  --text-lead--line-height: 1.5;
+  --text-lead--letter-spacing: -0.005em;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.6;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
+  --text-small--letter-spacing: 0.005em;
+
+  --radius-chip: 8px;
+  --radius-control: 14px;
+  --radius-card: 22px;
+  --radius-phone: 44px;
+
+  --shadow-card: 0 1px 2px rgb(14 9 28 / 0.06), 0 8px 24px -8px rgb(14 9 28 / 0.12);
+  --shadow-float: 0 1px 2px rgb(14 9 28 / 0.08), 0 24px 64px -16px rgb(14 9 28 / 0.28);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@layer base {
+  html {
+    background: var(--color-night);
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/* Mono label: Roboto Mono, uppercase, tracked out */
+@utility text-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+@utility figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+}
+
+/* Serif accent word inside a sans headline — ~8% larger to match x-height */
+@utility accent-serif {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.08em;
+  letter-spacing: -0.01em;
+}
+
+@utility gutter {
+  padding-inline: clamp(1rem, 4vw, 2.5rem);
+}
+
+@utility chapter-pad {
+  padding-block: clamp(5rem, 12vw, 10rem);
+}
+
+/* Press feedback: instant, subtle, on pointer-down */
+@utility press {
+  transition: transform 120ms var(--ease-out);
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Materials: floating translucent layers */
+@utility glass-paper {
+  background: rgb(250 249 246 / 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 0 0 1px rgb(14 9 28 / 0.06), 0 8px 32px -12px rgb(14 9 28 / 0.18);
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--color-paper);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  @media (prefers-contrast: more) {
+    background: var(--color-paper);
+    box-shadow: inset 0 0 0 1px var(--color-ink);
+  }
+}
+
+@utility glass-night {
+  background: rgb(14 9 28 / 0.6);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--color-night);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  @media (prefers-contrast: more) {
+    background: var(--color-night);
+    box-shadow: inset 0 0 0 1px var(--color-night-text);
+  }
+}
+
+@layer components {
+  /* Buttons — docs/DESIGN.md §7 */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding-inline: 1.25rem;
+    border-radius: var(--radius-control);
+    font-weight: 550;
+    font-size: 0.9375rem;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      transform 120ms var(--ease-out),
+      background-color 160ms ease,
+      color 160ms ease,
+      box-shadow 160ms ease;
+  }
+  .btn:active {
+    transform: scale(0.97);
+  }
+  .btn-sm {
+    min-height: 40px;
+    padding-inline: 0.875rem;
+    font-size: 0.875rem;
+    border-radius: 12px;
+  }
+  .btn-primary {
+    background: var(--color-accent);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 6px 20px -8px rgb(110 84 255 / 0.7);
+  }
+  .btn-secondary-night {
+    color: var(--color-night-text);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16);
+  }
+  .btn-secondary-paper {
+    color: var(--color-ink);
+    background: var(--color-surface);
+    box-shadow: inset 0 0 0 1px var(--color-line), var(--shadow-card);
+  }
+  .btn[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .btn[aria-disabled="true"]:active {
+    transform: none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:hover {
+      background: #5f45f5;
+    }
+    .btn-secondary-night:hover {
+      background: rgb(255 255 255 / 0.06);
+    }
+    .btn-secondary-paper:hover {
+      background: var(--color-paper);
+    }
+  }
+
+  /* Range slider — native input, restyled; keeps 1:1 tracking and keyboard support */
+  .range {
+    --fill: 50%;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 44px;
+    background: transparent;
+    cursor: pointer;
+    touch-action: pan-y;
+  }
+  .range::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent) 0 var(--fill),
+      rgb(14 9 28 / 0.1) var(--fill) 100%
+    );
+  }
+  .range::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: rgb(14 9 28 / 0.1);
+  }
+  .range::-moz-range-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-accent);
+  }
+  .range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 28px;
+    height: 28px;
+    margin-top: -11px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgb(14 9 28 / 0.08), 0 4px 12px rgb(14 9 28 / 0.2);
+    transition: transform 120ms var(--ease-out);
+  }
+  .range::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgb(14 9 28 / 0.08), 0 4px 12px rgb(14 9 28 / 0.2);
+  }
+  .range:active::-webkit-slider-thumb {
+    transform: scale(1.12);
+  }
+  .range:focus-visible {
+    outline: none;
+  }
+  .range:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-accent);
+  }
+  .range:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-accent);
+  }
+
+  /* Typewriter used once per chat replay */
+  .typewriter {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    clip-path: inset(0 100% 0 0);
+    animation: typewriter 900ms steps(15, end) forwards;
+  }
+  @keyframes typewriter {
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-ink-muted);
+    animation: typing 1s var(--ease-in-out) infinite;
+  }
+  .typing-dot:nth-child(2) {
+    animation-delay: 150ms;
+  }
+  .typing-dot:nth-child(3) {
+    animation-delay: 300ms;
+  }
+  @keyframes typing {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: translateY(0);
+    }
+    50% {
+      opacity: 1;
+      transform: translateY(-2px);
+    }
+  }
+
+  /* Card flip faces for sealed → revealed bids */
+  .flip {
+    transform-style: preserve-3d;
+  }
+  .flip-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip-back {
+    transform: rotateY(180deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .typewriter {
+      animation: none;
+      clip-path: none;
+    }
+    .typing-dot {
+      animation: none;
+      opacity: 0.6;
+    }
+  }
+}
+
+/* Scroll reveal — set by <Reveal>. Visible unless JS explicitly hides a below-the-fold element. */
+[data-reveal] {
+  transition:
+    opacity 600ms var(--ease-out) var(--reveal-delay, 0s),
+    transform 600ms var(--ease-out) var(--reveal-delay, 0s);
+}
+[data-reveal="hidden"] {
+  opacity: 0;
+  transform: translateY(12px);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal="hidden"] {
+    transform: none;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
