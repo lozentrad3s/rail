@@ -404,9 +404,13 @@ Loop per `OrderCreated`: filter by currency, max size and **attestor allowlist**
 
 ### 5.5 `web` — Next.js PWA
 
+Route groups: `(marketing)` landing site · `(sender)` sender app · `(provider)` LP and explorer.
+Design: `docs/DESIGN.md`.
+
 | Route | Audience | Purpose |
 |---|---|---|
-| `/` | sender | Amount + recipient → quote → Face ID → done |
+| `/` | everyone | Landing site (`(marketing)`) — see `docs/DESIGN.md` §9 |
+| `/send` | sender | Amount + recipient → quote → Face ID → done |
 | `/fund` | sender | Add dollars by card / Apple Pay / bank transfer via the embedded Ramp Network widget (AUSD on Monad; UK + US). Rail never touches the fiat |
 | `/c/[draftId]` | sender | Confirm a WhatsApp draft → Face ID |
 | `/k/[token]` | sender | Add a contact's bank details (from a WhatsApp `add` link) |

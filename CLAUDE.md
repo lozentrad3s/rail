@@ -90,7 +90,16 @@ grep -rniE "wallet|gas|blockchain|crypto|seed phrase|mnemonic|web3|on-chain|onch
 ```
 
 Allowed: "Face ID", "passkey", "dollars", "digital dollars", "secure". LP-facing pages are exempt —
-LPs already have wallets.
+LPs already have wallets. The landing site (`web/src/app/(marketing)`) has two registers: the hero
+and every call to action follow the ban list; the protocol and Monad chapters may use precise terms
+for judges and builders (see `docs/DESIGN.md` §8).
+
+## Design (`web/`)
+
+`docs/DESIGN.md` governs every visual and motion decision — tokens, type scale, springs, materials,
+components, voice. Use its tokens; never hardcode a hex, duration or easing in a component.
+Simulations are labelled as simulations and targets as targets; never imply a partner, licence or
+number we don't have.
 
 - The Mera passkey `rpId` is the production domain from day one. Never create passkeys on a preview
   or `vercel.app` domain — accounts bind permanently to their `rpId`.

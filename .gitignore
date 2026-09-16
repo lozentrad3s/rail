@@ -36,3 +36,7 @@ Thumbs.db
 
 # Bank alert corpus with unredacted numbers
 docs/corpus/raw/
+
+# Internal strategy docs (plan, research, bounty strategy)
+internal/
+rail-build-handoff.md
