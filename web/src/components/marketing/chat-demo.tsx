@@ -49,15 +49,36 @@ export function ChatDemo() {
   const reduce = useReducedMotion();
   const [step, setStep] = useState<number>(STEP.idle);
   const [run, setRun] = useState(0);
+  const [pageReady, setPageReady] = useState(false);
 
   // Reduced motion shows the finished conversation — same information, no movement.
   const current = reduce ? LAST : step;
 
+  // Autoplay waits for the page to load and go idle, so the demo never competes with first paint.
   useEffect(() => {
-    if (reduce || !inView || step >= LAST) return;
+    let idle: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const start = () => {
+      if ("requestIdleCallback" in window) {
+        idle = window.requestIdleCallback(() => setPageReady(true), { timeout: 1500 });
+      } else {
+        timer = setTimeout(() => setPageReady(true), 0);
+      }
+    };
+    if (document.readyState === "complete") start();
+    else window.addEventListener("load", start, { once: true });
+    return () => {
+      window.removeEventListener("load", start);
+      if (idle !== undefined) window.cancelIdleCallback(idle);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduce || !pageReady || !inView || step >= LAST) return;
     const timer = setTimeout(() => setStep((s) => s + 1), DURATION_MS[step]);
     return () => clearTimeout(timer);
-  }, [step, inView, reduce, run]);
+  }, [step, inView, reduce, run, pageReady]);
 
   const replay = () => {
     setStep(STEP.idle);
@@ -197,7 +218,7 @@ function StatusBar() {
 
 function ChatHeader() {
   return (
-    <div className="flex shrink-0 items-center gap-2.5 border-b border-line bg-surface/80 px-4 pb-2.5 pt-1 backdrop-blur-md">
+    <div className="flex shrink-0 items-center gap-2.5 border-b border-line bg-surface/80 px-4 pb-2.5 pt-1">
       <RailMark className="size-9" />
       <div className="min-w-0 leading-tight">
         <p className="text-[0.9375rem] font-semibold tracking-[-0.01em]">Rail</p>
@@ -280,12 +301,12 @@ function QuoteCard({ state }: { state: "ready" | "pressed" | "approved" }) {
 
 function Composer({ typing }: { typing: boolean }) {
   return (
-    <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface/80 px-3 py-2.5 backdrop-blur-md">
+    <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface/80 px-3 py-2.5">
       <div className="flex h-9 flex-1 items-center rounded-full bg-surface px-3.5 text-[0.875rem] shadow-[inset_0_0_0_1px_rgb(14_9_28/0.08)]">
         {typing ? (
           <span className="typewriter">send 50k to mum</span>
         ) : (
-          <span className="text-ink-muted/70">Message</span>
+          <span className="text-ink-muted">Message</span>
         )}
       </div>
       <span className="grid size-9 place-items-center rounded-full bg-accent text-white">

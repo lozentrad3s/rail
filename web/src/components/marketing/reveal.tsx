@@ -24,12 +24,23 @@ export function Reveal({
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
-    if (el.getBoundingClientRect().top < window.innerHeight) return;
 
-    el.dataset.reveal = "hidden";
+    // The observer's first callback says where the element starts, using geometry the browser has
+    // already computed. Reading layout here instead would force a synchronous layout per instance.
+    let first = true;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry?.isIntersecting) return;
+        if (!entry) return;
+        if (first) {
+          first = false;
+          if (entry.boundingClientRect.top < window.innerHeight) {
+            observer.disconnect();
+            return;
+          }
+          el.dataset.reveal = "hidden";
+          return;
+        }
+        if (!entry.isIntersecting) return;
         el.dataset.reveal = "shown";
         observer.disconnect();
       },
