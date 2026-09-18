@@ -4,7 +4,7 @@
 If code and this file disagree, this file wins; if this file is wrong, change it first, in its own
 commit, then the code. Governed by `CLAUDE.md`.
 
-Status: **v1 · 16 Sep 2026 · task R1**
+Status: **v2 · 18 Sep 2026 · adds sender passkey accounts (§5.5.1)**
 
 ---
 
@@ -410,6 +410,8 @@ Design: `docs/DESIGN.md`.
 | Route | Audience | Purpose |
 |---|---|---|
 | `/` | everyone | Landing site (`(marketing)`) — see `docs/DESIGN.md` §9 |
+| `/start` | sender | Create an account with Face ID, or unlock one on a device that already has a passkey |
+| `/account` | sender | Balance, add money, recent transfers |
 | `/send` | sender | Amount + recipient → quote → Face ID → done |
 | `/fund` | sender | Add dollars by card / Apple Pay / bank transfer via the embedded Ramp Network widget (AUSD on Monad; UK + US). Rail never touches the fiat |
 | `/c/[draftId]` | sender | Confirm a WhatsApp draft → Face ID |
@@ -420,6 +422,50 @@ Design: `docs/DESIGN.md`.
 | `/explorer` | public | Auctions, clearing rates, settlement times (from indexer) |
 
 Passkeys: Mera, `rpId` = production domain, account path `m/44'/60'/0'/0/0`.
+
+### 5.5.1 Sender passkey accounts (`web/src/lib/account`)
+
+Chain access, the token address and every Mera call live under `web/src/lib/account`, never in
+`(sender)` or `components/sender` — those paths must return zero hits on the `CLAUDE.md` ban list,
+and identifiers like `monadTestnet` or `createWalletClient` would fail it.
+
+**Derivation.** `@category-labs/mera` ≥ 0.2.0.
+
+```
+createPasskeyWithPrfOutput({ rp: { id: rpId, name: "Rail" }, user }) → prfOutput (32 bytes)
+entropyToMnemonic(prfOutput) → mnemonicToSeedSync → HDKey.derive("m/44'/60'/0'/0/{index}")
+→ secp256k1 private key → createSecp256k1SigningSession → toViemAccount (signs EIP-712 / EIP-3009)
+```
+
+| Index | Account |
+|---|---|
+| 0 | Spending account: holds AUSD, signs `ReceiveWithAuthorization` (§3.1) |
+| 1 | Savings account (Mera "one passkey, many keys"). Same passkey, separate address |
+
+**Storage.** `localStorage` key `rail.account.v1`:
+`{ version: 1, credentialId, transports?, address, rpId }`. **The private key is never persisted**,
+never leaves the tab, and exists only inside one signing session.
+
+**One Face ID per authorisation.** Every signature re-runs `getPasskeyPrfOutput({ rpId, credential })`,
+derives the key, signs, then calls `session.end()`. There is no ambient session that could sign
+without the user — this is the PWA half of invariant 2 in `CLAUDE.md`.
+
+**`rpId`** is `NEXT_PUBLIC_PASSKEY_RP_ID`. Account creation is refused on any host that is neither
+that value (or a subdomain of it) nor `localhost`/`127.0.0.1`, because a passkey binds permanently to
+the `rpId` it was created for. A preview deployment must never mint an account.
+
+**Failure states the UI must handle**, all shown in sender register (no crypto vocabulary):
+
+| Cause | Meaning for the user |
+|---|---|
+| `PRF_UNAVAILABLE` (Mera) | This browser saved the passkey somewhere Rail can't use. Offer Safari/Chrome with iCloud Keychain, 1Password or Google Password Manager |
+| `PASSKEY_OPERATION_FAILED`, cancelled, or WebAuthn missing | Face ID was cancelled or unavailable — offer retry |
+| Host not allowed | Accounts are only created on the live site |
+| No stored credential on this device | Offer "I already have an account" → `getPasskeyPrfOutput` with no `credential`, which lets the platform pick a discoverable passkey |
+
+**Balance** is `balanceOf(address)` on AUSD over a public RPC (`NEXT_PUBLIC_RPC_URL`, default
+`https://testnet-rpc.monad.xyz`), formatted as dollars from 6 decimals. Reading needs no signature
+and no MON.
 
 ### 5.6 `android` — SMS attestor
 
