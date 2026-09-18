@@ -1,0 +1,28 @@
+// Chain access for the sender app. Kept out of `(sender)` and `components/sender` so those paths
+// stay clean against the ban list in CLAUDE.md — see docs/INTERFACES.md §5.5.1.
+
+import { createPublicClient, http, erc20Abi, formatUnits, type Address } from "viem";
+import { monadTestnet } from "viem/chains";
+
+/** AUSD, 6 decimals. Testnet address — docs/INTERFACES.md §1. */
+const SETTLEMENT_ASSET: Address = "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC";
+const DECIMALS = 6;
+
+const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || monadTestnet.rpcUrls.default.http[0];
+
+const client = createPublicClient({ chain: monadTestnet, transport: http(rpcUrl) });
+
+/**
+ * The account's spendable balance, in whole dollars and cents.
+ *
+ * A read needs no signature and no fee, so this works for an account that has never transacted.
+ */
+export async function readBalance(address: Address): Promise<{ units: bigint; dollars: number }> {
+  const units = await client.readContract({
+    address: SETTLEMENT_ASSET,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: [address],
+  });
+  return { units, dollars: Number(formatUnits(units, DECIMALS)) };
+}
