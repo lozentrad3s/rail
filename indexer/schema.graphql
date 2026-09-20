@@ -1,0 +1,109 @@
+"The lifecycle of one transfer, from escrow to settlement or refund."
+type Order {
+  id: ID! # orderId
+  sender: String!
+  currency: String! # ISO 4217, decoded from bytes3
+  localAmount: BigInt! # minor units of the local currency
+  maxAusd: BigInt! # the reserve price the sender signed
+  fee: BigInt!
+  attestor: String!
+  recipientCommitment: String! # salted hash — never the bank details themselves
+  status: String! # Open | Awarded | Paid | Disputed | Settled | Refunded | Cancelled
+
+  winner: String
+  winningBid: BigInt
+  paidToLp: BigInt
+  changeToSender: BigInt
+  slashed: BigInt
+
+  "Windows, in block numbers — the only clock this protocol trusts."
+  commitEnd: BigInt!
+  revealEnd: BigInt!
+  payoutDeadline: BigInt
+  disputeEnd: BigInt
+  resolutionEnd: BigInt
+
+  createdBlock: BigInt!
+  createdAt: BigInt!
+  awardedBlock: BigInt
+  paidBlock: BigInt
+  settledBlock: BigInt
+  refundedBlock: BigInt
+
+  "Blocks from creation to settlement. The number the pitch lives or dies on."
+  settlementBlocks: BigInt
+
+  bidCount: Int!
+  revealCount: Int!
+  bids: [Bid!]! @derivedFrom(field: "order")
+  attestations: [Attestation!]! @derivedFrom(field: "order")
+}
+
+"One provider's participation in one auction."
+type Bid {
+  id: ID! # orderId-lp
+  order: Order!
+  lp: LiquidityProvider!
+  commitment: String!
+  committedBlock: BigInt!
+  amount: BigInt
+  revealedBlock: BigInt
+  leading: Boolean!
+  collateral: BigInt
+  won: Boolean!
+}
+
+"Stake and record. Every number here is derived from events, never written by anyone."
+type LiquidityProvider {
+  id: ID! # address
+  staked: BigInt!
+  pendingUnstake: BigInt!
+  unlockAt: BigInt
+  commits: Int!
+  reveals: Int!
+  wins: Int!
+  settled: Int!
+  defaults: Int!
+  volumeSettled: BigInt!
+  slashedTotal: BigInt!
+  firstSeenBlock: BigInt!
+  bids: [Bid!]! @derivedFrom(field: "lp")
+}
+
+"Evidence that a payout landed. Layer 1 recipient, 2 bank alert, 3 CRE."
+type Attestation {
+  id: ID! # orderId-signer
+  order: Order!
+  signer: String!
+  layer: Int!
+  evidenceHash: String!
+  block: BigInt!
+  timestamp: BigInt!
+}
+
+"Money that could not be sent because the token refused it, and is waiting to be claimed."
+type DeferredPayment {
+  id: ID! # account
+  account: String!
+  outstanding: BigInt!
+  totalDeferred: BigInt!
+  totalClaimed: BigInt!
+  lastBlock: BigInt!
+}
+
+"One currency, one day. What the landing page and the explorer read."
+type CurrencyDayStat {
+  id: ID! # currency-dayStart
+  currency: String!
+  dayStart: BigInt!
+  orders: Int!
+  settled: Int!
+  refunded: Int!
+  cancelled: Int!
+  localVolume: BigInt!
+  ausdVolume: BigInt!
+  "What senders kept because providers competed, rather than paying the reserve price."
+  senderSavings: BigInt!
+  medianSettlementBlocks: BigInt
+  settlementBlockSamples: [BigInt!]!
+}

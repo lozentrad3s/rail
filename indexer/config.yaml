@@ -1,0 +1,53 @@
+# Rail — Envio HyperIndex
+#
+# Sourced only from the events in contracts/src/interfaces/IRail.sol. If something is not emitted,
+# it does not belong in here: the indexer must never become a second source of truth about money.
+#
+# Addresses and the start block come from docs/DEPLOYMENTS.md.
+name: rail
+description: Sealed-bid FX auctions, escrow and provider reputation on Monad
+
+# A reorg would otherwise leave settled orders that never happened.
+rollback_on_reorg: true
+
+contracts:
+  - name: RailCore
+    handler: ./src/EventHandlers.ts
+    events:
+      - event: "OrderCreated(bytes32 indexed orderId, address indexed sender, bytes3 indexed currency, uint256 localAmount, uint256 maxAusd, uint256 fee, address attestor, bytes32 recipientCommitment, uint64 commitEnd, uint64 revealEnd)"
+      - event: "BidCommitted(bytes32 indexed orderId, address indexed lp, bytes32 commitment)"
+      - event: "BidRevealed(bytes32 indexed orderId, address indexed lp, uint256 amount, bool leading)"
+      - event: "CollateralLocked(bytes32 indexed orderId, address indexed lp, uint256 amount)"
+      - event: "OrderAwarded(bytes32 indexed orderId, address indexed winner, uint256 winningBid, uint64 payoutDeadline)"
+      - event: "OrderCancelled(bytes32 indexed orderId, uint256 refunded)"
+      - event: "MarkedPaid(bytes32 indexed orderId, address indexed winner, uint64 disputeEnd)"
+      - event: "Disputed(bytes32 indexed orderId, address indexed sender, uint64 resolutionEnd)"
+      - event: "OrderSettled(bytes32 indexed orderId, address indexed winner, uint256 paidToLp, uint256 changeToSender)"
+      - event: "OrderRefunded(bytes32 indexed orderId, address indexed sender, uint256 escrow, uint256 slashed)"
+      - event: "PaymentDeferred(address indexed to, uint256 amount)"
+      - event: "Claimed(address indexed account, uint256 amount)"
+
+  - name: LPRegistry
+    handler: ./src/EventHandlers.ts
+    events:
+      - event: "Staked(address indexed lp, uint256 amount, uint256 staked)"
+      - event: "UnstakeRequested(address indexed lp, uint256 amount, uint64 unlockAt)"
+      - event: "Withdrawn(address indexed lp, uint256 amount)"
+      - event: "Settled(bytes32 indexed orderId, address indexed lp, uint256 volume)"
+      - event: "Slashed(bytes32 indexed orderId, address indexed lp, uint256 amount)"
+
+  - name: SignedAttestor
+    handler: ./src/EventHandlers.ts
+    events:
+      - event: "Attested(bytes32 indexed orderId, address indexed signer, uint8 layer, bytes32 evidenceHash)"
+
+chains:
+  - id: 10143 # Monad testnet
+    start_block: 63549435 # the block Rail was deployed in
+    contracts:
+      - name: RailCore
+        address: "0xf0A34887d703300FA73533678A4a1f9D3B68c27F"
+      - name: LPRegistry
+        address: "0xbcbB919329A3f86ddC6A3c948788201c2fD48b5a"
+      - name: SignedAttestor
+        address: "0x2D6637D0F9C89648B39eF5f776E9923734C8CFdA"

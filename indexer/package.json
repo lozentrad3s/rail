@@ -1,0 +1,21 @@
+{
+  "name": "rail-indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "codegen": "envio codegen",
+    "dev": "envio dev",
+    "start": "envio start",
+    "check": "node scripts/check.mjs"
+  },
+  "dependencies": {
+    "envio": "3.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5",
+    "viem": "^2.56.8",
+    "yaml": "^2.6.0"
+  }
+}

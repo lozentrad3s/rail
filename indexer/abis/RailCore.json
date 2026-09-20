@@ -1,0 +1,1279 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "ausd_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "registry_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "commitBlocks_",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "revealBlocks_",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "payoutBlocks_",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "disputeBlocks_",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "resolutionBlocks_",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "collateralBps_",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "owner_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "ATTESTOR_GAS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ausd",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "canFinalize",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "canRefund",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "claim",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimable",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "closeAuction",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "collateralBps",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "collateralFor",
+    "inputs": [
+      {
+        "name": "bid",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "commitBid",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "commitment",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "commitBlocks",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "commitmentOf",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "lp",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "computeCommitment",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "lp",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "salt",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "createOrder",
+    "inputs": [
+      {
+        "name": "intent",
+        "type": "tuple",
+        "internalType": "struct OrderIntent",
+        "components": [
+          {
+            "name": "sender",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "recipientCommitment",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "currency",
+            "type": "bytes3",
+            "internalType": "bytes3"
+          },
+          {
+            "name": "localAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxAusd",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "fee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "relayer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "attestor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      },
+      {
+        "name": "authorization",
+        "type": "tuple",
+        "internalType": "struct Authorization",
+        "components": [
+          {
+            "name": "validAfter",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "validBefore",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "v",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createPaused",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "dispute",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "signature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "disputeBlocks",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "eip712Domain",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "fields",
+        "type": "bytes1",
+        "internalType": "bytes1"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "version",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "verifyingContract",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "salt",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "extensions",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "finalize",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getOrder",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct Order",
+        "components": [
+          {
+            "name": "sender",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum Status"
+          },
+          {
+            "name": "currency",
+            "type": "bytes3",
+            "internalType": "bytes3"
+          },
+          {
+            "name": "commitEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "winner",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "revealEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "attestor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "payoutDeadline",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "maxAusd",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "winningBid",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "recipientCommitment",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "localAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "disputeEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "resolutionEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hashIntent",
+    "inputs": [
+      {
+        "name": "intent",
+        "type": "tuple",
+        "internalType": "struct OrderIntent",
+        "components": [
+          {
+            "name": "sender",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "recipientCommitment",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "currency",
+            "type": "bytes3",
+            "internalType": "bytes3"
+          },
+          {
+            "name": "localAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxAusd",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "fee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "relayer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "attestor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "markPaid",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "payoutBlocks",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "refund",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "registry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ILPRegistry"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "resolutionBlocks",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "revealBid",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "salt",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "revealBlocks",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setCreatePaused",
+    "inputs": [
+      {
+        "name": "paused",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "BidCommitted",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "lp",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "commitment",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BidRevealed",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "lp",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "leading",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Claimed",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CollateralLocked",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "lp",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CreatePausedSet",
+    "inputs": [
+      {
+        "name": "paused",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Disputed",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "resolutionEnd",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "EIP712DomainChanged",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MarkedPaid",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "disputeEnd",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OrderAwarded",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "winningBid",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "payoutDeadline",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OrderCancelled",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "refunded",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OrderCreated",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "currency",
+        "type": "bytes3",
+        "indexed": true,
+        "internalType": "bytes3"
+      },
+      {
+        "name": "localAmount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxAusd",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "fee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "attestor",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "recipientCommitment",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "commitEnd",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "revealEnd",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OrderRefunded",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "escrow",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "slashed",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OrderSettled",
+    "inputs": [
+      {
+        "name": "orderId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "paidToLp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "changeToSender",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PaymentDeferred",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "Attested",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AuctionLive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadReveal",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadSignature",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BidOutOfRange",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CommitClosed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CreatePaused",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DeadlinePassed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientGas",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidIntent",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidShortString",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoBids",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoCommitment",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotEligible",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotOpen",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotSender",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotWinner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NothingToClaim",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OrderExists",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RevealClosed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RevealNotStarted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "StringTooLong",
+    "inputs": [
+      {
+        "name": "str",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "WindowOpen",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongStatus",
+    "inputs": [
+      {
+        "name": "found",
+        "type": "uint8",
+        "internalType": "enum Status"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  }
+]
