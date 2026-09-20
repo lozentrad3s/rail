@@ -13,18 +13,24 @@ import {
 } from "@category-labs/mera";
 import { toViemAccount } from "@category-labs/mera/viem";
 import type { Address, LocalAccount } from "viem";
-import { deriveKey, SPENDING_INDEX } from "./keys";
+import { deriveKey, SAVINGS_INDEX, SPENDING_INDEX } from "./keys";
 
 const STORAGE_KEY = "rail.account.v1";
 const ACCOUNT_CHANGED = "rail:account-changed";
 const DEV_HOSTS = new Set(["localhost", "127.0.0.1"]);
 
-/** Public account data. The private key is never here, and never persisted anywhere. */
+/**
+ * Public account data. The private key is never here, and never persisted anywhere.
+ *
+ * `savingsAddress` is the second account the same passkey derives (index 1). A stored record from
+ * before savings existed has none, and the next unlock fills it in.
+ */
 export type StoredAccount = {
-  version: 1;
+  version: 1 | 2;
   credentialId: string;
   transports?: readonly string[];
   address: Address;
+  savingsAddress?: Address;
   rpId: string;
 };
 
@@ -103,7 +109,7 @@ export function parseAccount(raw: string | null): StoredAccount | null {
       typeof parsed === "object" &&
       parsed !== null &&
       "version" in parsed &&
-      (parsed as StoredAccount).version === 1 &&
+      ((parsed as StoredAccount).version === 1 || (parsed as StoredAccount).version === 2) &&
       typeof (parsed as StoredAccount).address === "string" &&
       typeof (parsed as StoredAccount).credentialId === "string"
     ) {
@@ -168,6 +174,22 @@ function unlockFrom(prfOutput: Uint8Array, index: number): UnlockedAccount {
 }
 
 /**
+ * Both addresses this passkey owns, from one PRF output.
+ *
+ * The second account costs nothing extra — no second passkey, no second prompt — which is the whole
+ * point of deriving keys from PRF rather than storing them. Sessions are ended straight away: this
+ * reads addresses, it does not leave anything able to sign.
+ */
+function addressesFrom(prfOutput: Uint8Array): { address: Address; savingsAddress: Address } {
+  const spending = unlockFrom(prfOutput, SPENDING_INDEX);
+  const savings = unlockFrom(prfOutput, SAVINGS_INDEX);
+  const addresses = { address: spending.address, savingsAddress: savings.address };
+  spending.end();
+  savings.end();
+  return addresses;
+}
+
+/**
  * Creates the passkey and returns the account it derives.
  *
  * One Face ID prompt on authenticators that evaluate PRF at creation; Mera runs a second ceremony
@@ -183,15 +205,13 @@ export async function createAccount(label: string): Promise<StoredAccount> {
       rp: { id: rpId, name: "Rail" },
       user: { name: label, displayName: label },
     });
-    const unlocked = unlockFrom(created.prfOutput, SPENDING_INDEX);
     const account: StoredAccount = {
-      version: 1,
+      version: 2,
       credentialId: created.credentialId,
       transports: created.transports,
-      address: unlocked.address,
+      ...addressesFrom(created.prfOutput),
       rpId,
     };
-    unlocked.end();
     saveAccount(account);
     return account;
   } catch (error) {
@@ -208,14 +228,8 @@ export async function createAccount(label: string): Promise<StoredAccount> {
 export async function unlockAccount(
   options: { index?: number; credential?: PasskeyCredentialMetadata } = {},
 ): Promise<UnlockedAccount & { credentialId: string }> {
-  const { rpId } = resolveRpId();
-  const stored = loadAccount();
-  const credential =
-    options.credential ??
-    (stored ? { credentialId: stored.credentialId, transports: stored.transports } : undefined);
-
   try {
-    const asserted = await getPasskeyPrfOutput({ rpId, credential });
+    const asserted = await assertPasskey(options.credential);
     const unlocked = unlockFrom(asserted.prfOutput, options.index ?? SPENDING_INDEX);
     return { ...unlocked, credentialId: asserted.credentialId };
   } catch (error) {
@@ -223,22 +237,36 @@ export async function unlockAccount(
   }
 }
 
+/** One Face ID prompt, returning the PRF output every account of this passkey derives from. */
+async function assertPasskey(credential?: PasskeyCredentialMetadata) {
+  const { rpId } = resolveRpId();
+  const stored = loadAccount();
+  const chosen =
+    credential ??
+    (stored ? { credentialId: stored.credentialId, transports: stored.transports } : undefined);
+  return getPasskeyPrfOutput({ rpId, credential: chosen });
+}
+
 /**
  * Unlocks, then records the account on this device.
  *
- * Used by "I already have an account": the address comes from the passkey itself, so a stolen or
- * tampered link can't point someone at an address they don't control.
+ * Used by "I already have an account": the addresses come from the passkey itself, so a stolen or
+ * tampered link can't point someone at an address they don't control. This is also what upgrades a
+ * record saved before the savings account existed.
  */
 export async function restoreAccount(): Promise<StoredAccount> {
   const { rpId } = resolveRpId();
-  const unlocked = await unlockAccount({ credential: undefined });
-  const account: StoredAccount = {
-    version: 1,
-    credentialId: unlocked.credentialId,
-    address: unlocked.address,
-    rpId,
-  };
-  unlocked.end();
-  saveAccount(account);
-  return account;
+  try {
+    const asserted = await assertPasskey(undefined);
+    const account: StoredAccount = {
+      version: 2,
+      credentialId: asserted.credentialId,
+      ...addressesFrom(asserted.prfOutput),
+      rpId,
+    };
+    saveAccount(account);
+    return account;
+  } catch (error) {
+    throw toAccountError(error);
+  }
 }

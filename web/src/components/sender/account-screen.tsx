@@ -12,6 +12,7 @@ import {
   accountSnapshot,
   forgetAccount,
   parseAccount,
+  restoreAccount,
   serverAccountSnapshot,
   subscribeAccount,
 } from "@/lib/account/passkey";
@@ -24,10 +25,12 @@ export function AccountScreen() {
   const reduce = useReducedMotion();
 
   const [dollars, setDollars] = useState<number | null>(null);
+  const [savingsDollars, setSavingsDollars] = useState<number | null>(null);
   const [unreachable, setUnreachable] = useState(false);
   const [reading, setReading] = useState(false);
   const [reload, setReload] = useState(0);
   const [confirmForget, setConfirmForget] = useState(false);
+  const savingsAddress = account?.savingsAddress;
 
   useEffect(() => {
     if (raw === null) router.replace("/start");
@@ -41,9 +44,14 @@ export function AccountScreen() {
     const read = async () => {
       setReading(true);
       try {
-        const { dollars: amount } = await readBalance(address);
+        // Both accounts belong to the same passkey, so both balances come back without a prompt.
+        const [spending, savings] = await Promise.all([
+          readBalance(address),
+          savingsAddress ? readBalance(savingsAddress) : Promise.resolve(null),
+        ]);
         if (!cancelled) {
-          setDollars(amount);
+          setDollars(spending.dollars);
+          setSavingsDollars(savings ? savings.dollars : null);
           setUnreachable(false);
         }
       } catch {
@@ -62,7 +70,7 @@ export function AccountScreen() {
       cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [address, reload]);
+  }, [address, savingsAddress, reload]);
 
   if (!account) return null;
 
@@ -118,6 +126,31 @@ export function AccountScreen() {
             Your money is safe — this is the connection, not your account. Tap refresh in a moment.
           </Notice>
         ) : null}
+
+        {/* One passkey, two accounts. The second costs no extra prompt and no extra passkey. */}
+        <section className="mt-3 flex items-center justify-between gap-3 rounded-[18px] bg-surface px-5 py-4 shadow-card">
+          <div className="min-w-0">
+            <p className="text-label text-ink-muted">Savings</p>
+            <p className="text-small mt-1 text-ink-muted">
+              {savingsAddress
+                ? "Kept apart from your spending money. Same Face ID."
+                : "Face ID sets up a separate savings account for you."}
+            </p>
+          </div>
+          {savingsAddress ? (
+            <p className="figure shrink-0 text-[1.375rem] leading-none tracking-[-0.02em]">
+              {savingsDollars === null ? "$—" : usd(savingsDollars)}
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void restoreAccount().catch(() => setUnreachable(true))}
+              className="btn btn-sm btn-secondary-paper shrink-0"
+            >
+              Turn on
+            </button>
+          )}
+        </section>
 
         <div className="mt-5 grid grid-cols-3 gap-2.5">
           <Action icon={<Send className="size-[19px]" strokeWidth={2} />} label="Send" />

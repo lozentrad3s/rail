@@ -442,9 +442,15 @@ entropyToMnemonic(prfOutput) → mnemonicToSeedSync → HDKey.derive("m/44'/60'/
 | 0 | Spending account: holds AUSD, signs `ReceiveWithAuthorization` (§3.1) |
 | 1 | Savings account (Mera "one passkey, many keys"). Same passkey, separate address |
 
+**Both addresses are derived in the one ceremony that creates or unlocks the account**, from a single
+PRF output. That is what makes the second account free: no extra passkey, no extra prompt, and the
+balance of each is readable afterwards without any prompt at all, because reading needs no signature.
+
 **Storage.** `localStorage` key `rail.account.v1`:
-`{ version: 1, credentialId, transports?, address, rpId }`. **The private key is never persisted**,
-never leaves the tab, and exists only inside one signing session.
+`{ version: 2, credentialId, transports?, address, savingsAddress, rpId }`. **The private key is
+never persisted**, never leaves the tab, and exists only inside one signing session. A stored
+`version: 1` record predates the savings account and has no `savingsAddress`; it is still valid, and
+the next unlock fills it in.
 
 **One Face ID per authorisation.** Every signature re-runs `getPasskeyPrfOutput({ rpId, credential })`,
 derives the key, signs, then calls `session.end()`. There is no ambient session that could sign

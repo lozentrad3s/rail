@@ -78,6 +78,12 @@ try {
   const created = await readStored();
   check("Face ID creates an account", /^0x[0-9a-fA-F]{40}$/.test(created?.address ?? ""), created?.address);
   check("no private key is stored on the device", !JSON.stringify(created).match(/privateKey|prf/i));
+  check(
+    "the same passkey also derives a separate savings account",
+    /^0x[0-9a-fA-F]{40}$/.test(created?.savingsAddress ?? "") &&
+      created.savingsAddress !== created.address,
+    created?.savingsAddress,
+  );
 
   // Wait for a real formatted amount rather than "not the placeholder": the placeholder's exact
   // text is a UI detail, and a test that encodes it silently passes the moment someone changes it.
@@ -99,6 +105,11 @@ try {
     "the same passkey derives the same account",
     restored?.address === created?.address,
     restored?.address,
+  );
+  check(
+    "and the same savings account",
+    restored?.savingsAddress === created?.savingsAddress,
+    restored?.savingsAddress,
   );
   check("no console errors", consoleErrors.length === 0, consoleErrors.join(" | "));
 } finally {
