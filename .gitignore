@@ -40,3 +40,9 @@ docs/corpus/raw/
 # Internal strategy docs (plan, research, bounty strategy)
 internal/
 rail-build-handoff.md
+
+# Agent tooling (vendored skills)
+.agents/
+.claude/skills/
+skills-lock.json
+foundry.lock

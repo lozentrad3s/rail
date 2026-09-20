@@ -1,0 +1,31 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+
+# Pinned — CLAUDE.md. Never float the compiler on a contract holding other people's money.
+solc = "0.8.26"
+
+# Shanghai, not Cancun: Monad's supported opcode set is not documented hardfork-by-hardfork, and
+# nothing in Rail needs transient storage or MCOPY. Portability beats a few gas.
+evm_version = "shanghai"
+
+optimizer = true
+optimizer_runs = 200
+bytecode_hash = "none"
+
+# A failing fuzz case must be reproducible, and an auction is full of adversarial inputs.
+fuzz = { runs = 512, seed = "0x1" }
+
+[profile.ci]
+fuzz = { runs = 5000 }
+verbosity = 3
+
+[rpc_endpoints]
+monad_testnet = "${RPC_URL}"
+
+[fmt]
+line_length = 110
+number_underscore = "thousands"

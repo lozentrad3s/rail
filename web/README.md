@@ -25,6 +25,7 @@ All optional. Copy `.env.example` to `.env.local`.
 | `NEXT_PUBLIC_REPO_URL` | Shows "Read the protocol" | Button hidden |
 | `NEXT_PUBLIC_PASSKEY_RP_ID` | Host allowed to create passkey accounts — the production domain | Only `localhost` can create an account |
 | `NEXT_PUBLIC_RPC_URL` | Read-only endpoint used to show a balance | Public Monad testnet RPC |
+| `NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID` | Provider dashboard sign-in via Dynamic | Provider dashboard shows as not yet open |
 
 ## Structure
 
