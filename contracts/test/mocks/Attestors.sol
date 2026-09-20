@@ -26,14 +26,19 @@ contract RevertingAttestor is IAttestor {
     }
 }
 
-/// @notice Burns everything it is given, to try to make the caller's whole transaction fail.
+/**
+ * @notice Never returns: it spends every unit of gas it is handed and dies of exhaustion.
+ * @dev The attack is on the caller, not the answer. If `RailCore` forwarded all remaining gas, this
+ *      would take the whole settlement or refund down with it and strand the order forever. With a
+ *      capped stipend the staticcall simply fails, and a failure reads as "not delivered".
+ */
 contract GasBurningAttestor is IAttestor {
     function isDelivered(bytes32) external view returns (bool) {
         uint256 burn;
-        while (gasleft() > 1000) {
+        while (true) {
             burn = uint256(keccak256(abi.encode(burn, gasleft())));
         }
-        return true;
+        revert(); // unreachable; keeps the compiler happy about the return type
     }
 }
 

@@ -180,11 +180,15 @@ interface IRailCore {
     event BidCommitted(bytes32 indexed orderId, address indexed lp, bytes32 commitment);
     event BidRevealed(bytes32 indexed orderId, address indexed lp, uint256 amount, bool leading);
     event CollateralLocked(bytes32 indexed orderId, address indexed lp, uint256 amount);
-    event OrderAwarded(bytes32 indexed orderId, address indexed winner, uint256 winningBid, uint64 payoutDeadline);
+    event OrderAwarded(
+        bytes32 indexed orderId, address indexed winner, uint256 winningBid, uint64 payoutDeadline
+    );
     event OrderCancelled(bytes32 indexed orderId, uint256 refunded);
     event MarkedPaid(bytes32 indexed orderId, address indexed winner, uint64 disputeEnd);
     event Disputed(bytes32 indexed orderId, address indexed sender, uint64 resolutionEnd);
-    event OrderSettled(bytes32 indexed orderId, address indexed winner, uint256 paidToLp, uint256 changeToSender);
+    event OrderSettled(
+        bytes32 indexed orderId, address indexed winner, uint256 paidToLp, uint256 changeToSender
+    );
     event OrderRefunded(bytes32 indexed orderId, address indexed sender, uint256 escrow, uint256 slashed);
     event PaymentDeferred(address indexed to, uint256 amount);
     event Claimed(address indexed account, uint256 amount);
@@ -213,6 +217,7 @@ interface IRailCore {
     error Attested();
     error InsufficientGas();
     error NothingToClaim();
+    error NotOwner();
 
     function createOrder(OrderIntent calldata intent, Authorization calldata authorization)
         external
@@ -256,7 +261,10 @@ interface ISignedAttestor is IAttestor {
 
     function attest(bytes32 orderId, bytes32 evidenceHash, bytes calldata signature) external;
     function setSigner(address signer, uint8 layer) external;
-    function recordOf(bytes32 orderId) external view returns (uint8 layer, bytes32 evidenceHash, address signer);
+    function recordOf(bytes32 orderId)
+        external
+        view
+        returns (uint8 layer, bytes32 evidenceHash, address signer);
     function signerLayer(address signer) external view returns (uint8);
     function minLayer() external view returns (uint8);
 }

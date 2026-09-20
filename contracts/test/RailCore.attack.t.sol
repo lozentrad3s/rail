@@ -186,17 +186,22 @@ contract RailCoreAttackTest is Base {
 
     /// A provider wins with more money than it has staked, so a default would cost it nothing.
     function test_attack_cannotLeadWithoutCollateral() public {
-        bytes32 orderId = createOrder(defaultIntent());
+        // A transfer far larger than the provider's stake: eligible to bid, unable to back it.
+        OrderIntent memory intent = defaultIntent();
+        intent.maxAusd = 500e6;
+        intent.salt = bytes32(uint256(0xC0));
+        bytes32 orderId = createOrder(intent);
+
         address poor = address(0xB0B);
         ausd.mint(poor, MIN_STAKE);
-        stakeFor(poor, MIN_STAKE); // eligible to bid, nowhere near enough to collateralise 32 AUSD
+        stakeFor(poor, MIN_STAKE); // 100 AUSD staked, 550 AUSD of collateral required
 
-        bid(orderId, poor, 32e6, SALT_ONE);
+        bid(orderId, poor, 500e6, SALT_ONE);
         vm.roll(block.number + COMMIT_BLOCKS + 1);
 
         vm.prank(poor);
         vm.expectRevert();
-        core.revealBid(orderId, 32e6, SALT_ONE);
+        core.revealBid(orderId, 500e6, SALT_ONE);
     }
 
     /// An unstaked stranger bids, so a defaulting provider has nothing to slash.

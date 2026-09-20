@@ -65,6 +65,7 @@ abstract contract Base is Test {
             owner
         );
         attestor = new SignedAttestor(1, owner);
+        registry.setRail(address(core));
 
         ausd.mint(sender, 10_000e6);
         ausd.mint(lpOne, 10_000e6);
@@ -99,7 +100,9 @@ abstract contract Base is Test {
     function orderIdOf(OrderIntent memory intent) internal view returns (bytes32) {
         bytes32 domain = keccak256(
             abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                ),
                 keccak256("Rail"),
                 keccak256("1"),
                 block.chainid,
@@ -176,7 +179,9 @@ abstract contract Base is Test {
     function signDispute(bytes32 orderId, uint256 key) internal view returns (bytes memory) {
         bytes32 domain = keccak256(
             abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                ),
                 keccak256("Rail"),
                 keccak256("1"),
                 block.chainid,
