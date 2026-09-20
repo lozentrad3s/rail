@@ -51,6 +51,18 @@ Still to prove here: a contested auction with two providers, a payout attested a
 default that slashes collateral to the sender. Those need the matcher bot, because a 5+5 block
 auction is over in about three seconds — too fast to drive by hand.
 
+### Indexer
+
+[Envio Cloud](https://envio.dev), indexer `rail`, development tier, built from `main` with root
+directory `indexer`. Public GraphQL:
+
+```
+https://indexer.dev.hyperindex.xyz/c029a2e/v1/graphql
+```
+
+Synced from block 63549435. The free tier deletes deployments after 30 days and after 7 days of
+inactivity, so this must be redeployed close enough to judging (14–27 Oct) to still be alive.
+
 ### Costs measured
 
 | Action | Gas | Note |

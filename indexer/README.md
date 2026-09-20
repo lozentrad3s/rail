@@ -38,6 +38,12 @@ index nothing, forever.
 
 ## Deployed
 
+**Live GraphQL endpoint:** https://indexer.dev.hyperindex.xyz/c029a2e/v1/graphql
+
+Built and synced 20 Sep 2026: codegen passed on Envio's Linux builders, the chain is 100% synced,
+and the first indexed order comes back with its currency decoded from `bytes3` and its escrow
+amounts intact.
+
 Indexer `rail` in organisation `lozentrad3s`, development tier, deploying from `main` with root
 directory `indexer`. Envio builds it on Linux, so this is also where codegen and the TypeScript
 handlers are compiled for real.
