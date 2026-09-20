@@ -36,13 +36,32 @@ in `config.yaml` matches the deployed ABI byte for byte (compared by topic hash)
 config parses with every contract given an address. Typos in a signature don't error — they just
 index nothing, forever.
 
-## Deploying to Envio Cloud
+## Deployed
 
-1. Log in at [envio.dev/app](https://envio.dev/app) with GitHub and install the Envio Deployments app
-2. Add the indexer, pointing it at this repository with **root directory `indexer`** and config
-   `config.yaml`
-3. Push to the deployment branch; Envio builds, runs codegen and starts indexing from
-   `start_block`
+Indexer `rail` in organisation `lozentrad3s`, development tier, deploying from `main` with root
+directory `indexer`. Envio builds it on Linux, so this is also where codegen and the TypeScript
+handlers are compiled for real.
+
+```bash
+envio-cloud indexer get rail            # deployments and status
+envio-cloud deployment status           # completion percentage while it syncs
+envio-cloud deployment logs             # build and runtime logs
+envio-cloud deployment endpoint         # the GraphQL URL the app reads
+```
+
+The CLI authenticates through the GitHub CLI, so `envio-cloud login` needs no browser once `gh auth`
+is set up.
+
+**A build is triggered by a push to `main`.** Envio only knows commits it received by webhook, so a
+commit made before the indexer existed cannot be deployed by hash — push a new one instead.
+
+### Setting it up again from scratch
+
+1. Log in at [envio.dev](https://envio.dev) with GitHub, which creates the account, and install the
+   Envio Deployments app on the repository
+2. `envio-cloud indexer add --name rail --repo rail --root-dir indexer --config-file config.yaml
+   --branch main --tier development --access-type public`
+3. Push to `main`; Envio builds, runs codegen and starts indexing from `start_block`
 
 The free tier deletes deployments after 30 days, and after 7 days of inactivity — so deploy or
 redeploy close enough to judging (14–27 Oct) that it is still alive.
