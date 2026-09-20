@@ -46,9 +46,15 @@ Art-directed chapters, not a theme toggle: the page alternates **Night** (Monad'
 | `--ink` | `#0E091C` | Primary text on paper |
 | `--ink-muted` | `#57516A` | Secondary text on paper (7.4:1) |
 | `--accent` | `#6E54FF` | Monad purple — primary actions, the winning bid, links (white text 4.8:1) |
-| `--accent-soft` | `#DDD7FE` | Accent tints, selected states |
-| `--signal` | `#85E6FF` | Monad cyan — the block ticker, live indicators (night only) |
+| `--accent-bright` | `#8B74FF` | The lit edge of the accent gradient. Never a fill on its own |
+| `--accent-soft` | `#DDD7FE` | Monad light purple — accent tints, selected states |
+| `--signal` | `#B9A7FF` | Lilac — live chain data: the block ticker, sealed-bid locks, live dots |
 | `--caution` | `#FFAE45` | Monad orange — a bid skipped for insufficient stake (night only). Not an error, not a slash |
+
+**One hue, three jobs.** Purple carries the whole identity: `--accent` acts, `--signal` reports live
+chain state, `--accent-soft` tints. Monad's secondary cyan `#85E6FF` and pink `#FF8EE4` are
+deliberately unused — a second hue competing with the purple is what made the interface read as
+generic. Green and red remain reserved for money arriving and stake being slashed.
 | `--chat` | `#F3EFE7` | Chat wallpaper inside the phone mockup — warm, deliberately not WhatsApp's own colours |
 | `--money` | `#12B76A` | Money arrived — fills and dots only |
 | `--money-text` | `#067647` | Money arrived — text on paper (5.8:1) |
@@ -61,6 +67,21 @@ Art-directed chapters, not a theme toggle: the page alternates **Night** (Monad'
 - Green means **money arrived**. Nothing else is green.
 - Red means **stake slashed**. Nothing else is red — errors in forms use `--slash-text` with an icon.
 - Color never carries meaning alone: every state also has an icon or a label.
+
+### 2.1 Gradients
+
+Gradients here do one of three jobs, and a gradient that does none of them is decoration and gets
+cut.
+
+| Token | Value | Job |
+|---|---|---|
+| `--grad-action` | `linear-gradient(180deg, --accent-bright, --accent)` | Depth on the one button that commits. A lit top edge, like a physical key |
+| `--grad-money` | `radial-gradient(120% 120% at 85% 0%, rgb(110 84 255 / .45), transparent 60%)` over `--night` | The balance surface. Money is the heaviest object on the screen, so it is the darkest |
+| `--grad-depth` | `radial-gradient(60% 55% at 72% 42%, rgb(110 84 255 / .30), transparent 70%)` | Chapter lighting on night — one soft source, placed where the eye should land |
+
+**Never** a full-bleed purple-to-pink wash, a rainbow border, an animated mesh, or gradient body
+text. Those are the house style of generated interfaces, and a judge has seen four hundred of them
+this month. One light source per surface, and it has to explain where to look.
 
 ---
 
@@ -192,7 +213,27 @@ Touch targets ≥ 44×44px. Visible focus ring: 2px `--accent`, 2px offset, on e
 | 7 | **Providers** | paper | Supply side | Earn by delivering naira |
 | 8 | **Close** | night | Action | Continue on WhatsApp · Read the protocol |
 
-## 10 · Accessibility and performance budgets
+## 10 · Tells of a generated interface
+
+Judges review hundreds of hackathon projects, and most look like they came out of the same machine.
+These are the tells. None of them appear in Rail.
+
+| Tell | Instead |
+|---|---|
+| Purple-to-pink mesh gradient behind everything | One light source per surface, §2.1 |
+| Emoji as icons (🚀 💸 🔒) | Lucide SVG at a consistent stroke weight |
+| Three identical feature cards with a circular icon on top | Chapters that each do a different job, §9 |
+| Copy in the shape "Seamlessly unlock the future of X" | The kill list in §8 |
+| Glass on everything | Glass only where a layer genuinely floats over content, §5 |
+| A stat row of round numbers nobody sourced | Every figure carries a source, a "target" label, or a "simulation" label |
+| Gradient headline text | Weight and size make hierarchy, §3 |
+| Perfectly centered everything, one column, endless vertical rhythm | Asymmetry where the content earns it |
+| A dark mode toggle nobody asked for | Art-directed chapters, §2 |
+
+There is no watermark, badge, or "built with" credit anywhere in the product. The footer credits
+Monad, Agora and Mera because they are real dependencies, not because a template put them there.
+
+## 11 · Accessibility and performance budgets
 
 - WCAG 2.2 AA contrast on every text token (ratios above).
 - All sequences keyboard-operable; live regions announce auction results politely.

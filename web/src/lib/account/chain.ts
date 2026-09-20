@@ -13,6 +13,14 @@ const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || monadTestnet.rpcUrls.default.h
 const client = createPublicClient({ chain: monadTestnet, transport: http(rpcUrl) });
 
 /**
+ * True while balances are play money.
+ *
+ * The UI says so on screen. Showing a test balance as if it were real dollars would be the kind of
+ * dishonesty docs/DESIGN.md §1 exists to prevent.
+ */
+export const isPractice = monadTestnet.testnet === true;
+
+/**
  * The account's spendable balance, in whole dollars and cents.
  *
  * A read needs no signature and no fee, so this works for an account that has never transacted.

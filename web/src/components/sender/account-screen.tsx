@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { CircleAlert, Plus, RefreshCw, Send } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
+import { ArrowDownLeft, CircleAlert, Plus, RefreshCw, Send } from "lucide-react";
 import { Notice, Screen } from "./screen";
 import { cn, usd } from "@/lib/format";
-import { readBalance } from "@/lib/account/chain";
+import { spring } from "@/lib/motion";
+import { isPractice, readBalance } from "@/lib/account/chain";
 import {
   accountSnapshot,
   forgetAccount,
@@ -19,6 +21,7 @@ export function AccountScreen() {
   const raw = useSyncExternalStore(subscribeAccount, accountSnapshot, serverAccountSnapshot);
   const account = useMemo(() => parseAccount(raw), [raw]);
   const address = account?.address;
+  const reduce = useReducedMotion();
 
   const [dollars, setDollars] = useState<number | null>(null);
   const [unreachable, setUnreachable] = useState(false);
@@ -26,7 +29,6 @@ export function AccountScreen() {
   const [reload, setReload] = useState(0);
   const [confirmForget, setConfirmForget] = useState(false);
 
-  // A device with no account has nothing to show.
   useEffect(() => {
     if (raw === null) router.replace("/start");
   }, [raw, router]);
@@ -66,61 +68,75 @@ export function AccountScreen() {
 
   return (
     <Screen>
-      <div className="flex flex-1 flex-col pt-10">
-        <div className="rounded-card bg-surface p-6 shadow-card">
-          <div className="flex items-center justify-between">
-            <p className="text-label text-ink-muted">Your balance</p>
-            <button
-              type="button"
-              onClick={() => setReload((n) => n + 1)}
-              className="press -m-2 rounded-lg p-2 text-ink-muted"
-              aria-label="Check for money that has just arrived"
+      <div className="flex flex-1 flex-col">
+        {/* Money is the heaviest thing on the screen, so it is the darkest. */}
+        <section className="relative mt-7 overflow-hidden rounded-[28px] bg-night px-6 pb-7 pt-6 text-night-text shadow-float">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{ background: "var(--grad-money)" }}
+          />
+          <div className="relative">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-label text-night-muted">Your balance</p>
+              <div className="flex items-center gap-2">
+                {isPractice ? <span className="chip chip-night">Practice money</span> : null}
+                <button
+                  type="button"
+                  onClick={() => setReload((n) => n + 1)}
+                  className="press -m-2 grid size-10 place-items-center rounded-full text-night-muted"
+                  aria-label="Check for money that has just arrived"
+                >
+                  <RefreshCw
+                    className={cn("size-[18px]", reading && !reduce && "animate-spin")}
+                    strokeWidth={2.2}
+                  />
+                </button>
+              </div>
+            </div>
+
+            <motion.p
+              key={dollars === null ? "pending" : "value"}
+              initial={reduce ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={spring.settle}
+              className="figure mt-3 text-[clamp(2.75rem,2rem+3vw,3.25rem)] leading-none tracking-[-0.03em]"
+              aria-live="polite"
             >
-              <RefreshCw className={cn("size-4", reading && "animate-spin")} strokeWidth={2.2} />
-            </button>
+              {dollars === null ? <span className="text-night-muted">$—</span> : usd(dollars)}
+            </motion.p>
+
+            <p className="text-small mt-3 max-w-[20rem] text-night-muted">
+              Held in dollars. Nobody can move it without your face — not us, not anyone holding your
+              phone.
+            </p>
           </div>
-          <p className="figure mt-2 text-[2.5rem] leading-none tracking-[-0.02em]" aria-live="polite">
-            {dollars === null ? "—" : usd(dollars)}
-          </p>
-          <p className="text-small mt-3 text-ink-muted">
-            Held in dollars. Nobody can move it without your face.
-          </p>
-        </div>
+        </section>
 
         {unreachable ? (
-          <Notice icon={<CircleAlert className="size-4" strokeWidth={2.2} />} title="Can't show your balance right now">
-            Your money is safe — this is only the connection. Try again in a moment.
+          <Notice icon={<CircleAlert className="size-4" strokeWidth={2.2} />} title="Can't reach your balance">
+            Your money is safe — this is the connection, not your account. Tap refresh in a moment.
           </Notice>
         ) : null}
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <span
-            role="link"
-            aria-disabled="true"
-            className="btn btn-secondary-paper"
-            title="Adding money opens with the pilot"
-          >
-            <Plus className="size-[18px]" strokeWidth={2.2} aria-hidden="true" />
-            Add money
-          </span>
-          <span
-            role="link"
-            aria-disabled="true"
-            className="btn btn-secondary-paper"
-            title="Sending opens with the pilot"
-          >
-            <Send className="size-[18px]" strokeWidth={2.2} aria-hidden="true" />
-            Send
-          </span>
+        <div className="mt-5 grid grid-cols-3 gap-2.5">
+          <Action icon={<Send className="size-[19px]" strokeWidth={2} />} label="Send" />
+          <Action icon={<Plus className="size-[19px]" strokeWidth={2} />} label="Add money" />
+          <Action icon={<ArrowDownLeft className="size-[19px]" strokeWidth={2} />} label="Request" />
         </div>
         <p className="text-small mt-3 text-ink-muted">
-          Adding money and sending open with the pilot in October.
+          Sending opens with the pilot in October. You can set up your account today.
         </p>
 
-        <div className="mt-10">
-          <p className="text-label text-ink-muted">Transfers</p>
-          <p className="text-small mt-2 text-ink-muted">Your transfers will appear here.</p>
-        </div>
+        <section className="mt-9">
+          <h2 className="text-label text-ink-muted">Transfers</h2>
+          <div className="mt-3 rounded-[18px] border border-dashed border-line px-4 py-7 text-center">
+            <p className="text-small text-ink-muted">
+              Nothing yet. Every transfer you make will show here, with what it cost and how long it
+              took.
+            </p>
+          </div>
+        </section>
 
         <div className="mt-auto pt-10">
           <button
@@ -132,17 +148,39 @@ export function AccountScreen() {
               }
               forgetAccount();
             }}
-            className="text-small press rounded-lg text-ink-muted underline decoration-line underline-offset-4"
+            className="text-small press rounded-lg py-1 text-ink-muted underline decoration-line underline-offset-4"
           >
-            {confirmForget ? "Tap again to remove it from this phone" : "Remove this account from this phone"}
+            {confirmForget ? "Tap again to remove it" : "Remove this account from this phone"}
           </button>
           {confirmForget ? (
             <p className="text-small mt-2 text-ink-muted">
-              Your money stays where it is. Face ID brings the account back.
+              Your money stays where it is. Face ID brings the account back on any phone.
             </p>
           ) : null}
         </div>
       </div>
     </Screen>
+  );
+}
+
+/**
+ * One of the three things you can do with money.
+ *
+ * Rendered as an honest disabled state rather than a dead link, so nothing on this screen promises
+ * something that is not built yet.
+ */
+function Action({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <span
+      role="link"
+      aria-disabled="true"
+      title={`${label} opens with the pilot`}
+      className="flex min-h-[4.5rem] cursor-not-allowed flex-col items-center justify-center gap-1.5 rounded-[18px] border border-line bg-surface/50 text-[0.8125rem] font-medium text-ink-muted"
+    >
+      <span className="text-accent/45" aria-hidden="true">
+        {icon}
+      </span>
+      {label}
+    </span>
   );
 }

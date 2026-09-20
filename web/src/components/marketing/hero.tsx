@@ -39,15 +39,15 @@ export function Hero() {
 
           <ul className="mt-12 grid gap-3 text-small text-night-muted">
             <li className="flex items-start gap-2.5">
-              <Fingerprint className="mt-0.5 size-4 shrink-0 text-signal" strokeWidth={2} aria-hidden="true" />
+              <Fingerprint className="mt-0.5 size-4 shrink-0 text-accent-soft" strokeWidth={2} aria-hidden="true" />
               Approve with Face ID. No passwords to steal.
             </li>
             <li className="flex items-start gap-2.5">
-              <Landmark className="mt-0.5 size-4 shrink-0 text-signal" strokeWidth={2} aria-hidden="true" />
+              <Landmark className="mt-0.5 size-4 shrink-0 text-accent-soft" strokeWidth={2} aria-hidden="true" />
               Your family needs only a normal bank account.
             </li>
             <li className="flex items-start gap-2.5">
-              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-signal" strokeWidth={2} aria-hidden="true" />
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent-soft" strokeWidth={2} aria-hidden="true" />
               Rail never holds your family’s money.
             </li>
           </ul>

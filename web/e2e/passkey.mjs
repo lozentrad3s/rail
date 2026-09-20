@@ -79,11 +79,10 @@ try {
   check("Face ID creates an account", /^0x[0-9a-fA-F]{40}$/.test(created?.address ?? ""), created?.address);
   check("no private key is stored on the device", !JSON.stringify(created).match(/privateKey|prf/i));
 
+  // Wait for a real formatted amount rather than "not the placeholder": the placeholder's exact
+  // text is a UI detail, and a test that encodes it silently passes the moment someone changes it.
   await page.waitForFunction(
-    () => {
-      const shown = document.querySelector(".figure")?.textContent?.trim();
-      return Boolean(shown) && shown !== "—";
-    },
+    () => /^\$[\d,]+\.\d\d$/.test(document.querySelector(".figure")?.textContent?.trim() ?? ""),
     { timeout: 30_000 },
   );
   const balance = await page.$eval(".figure", (el) => el.textContent.trim());
