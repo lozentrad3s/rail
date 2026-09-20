@@ -20,8 +20,16 @@ import {SignedAttestor} from "../src/SignedAttestor.sol";
  *      forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast
  */
 contract Deploy is Script {
-    uint64 constant COMMIT_BLOCKS = 5;
-    uint64 constant REVEAL_BLOCKS = 5;
+    /**
+     * Five blocks is the theoretical floor at Monad's block time, and it is what the first
+     * deployment used. Measured on testnet, a provider bot on a public RPC needs about six blocks
+     * between an order appearing and its commit being mined — so five let only the luckiest bidder
+     * in, which is the opposite of what an auction is for. Fifteen leaves room for providers on
+     * ordinary connections to compete, and the whole auction still finishes in about twelve
+     * seconds. Override with COMMIT_BLOCKS / REVEAL_BLOCKS.
+     */
+    uint64 constant COMMIT_BLOCKS = 15;
+    uint64 constant REVEAL_BLOCKS = 15;
     uint64 constant PAYOUT_BLOCKS = 2000;
     uint64 constant DISPUTE_BLOCKS = 200;
     uint64 constant RESOLUTION_BLOCKS = 2000;

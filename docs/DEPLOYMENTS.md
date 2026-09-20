@@ -47,9 +47,61 @@ Order [`0x1633028fba24ed3669ec3410c2f01edb58c779e1af7459c4b59f5353f2745421`](htt
    the sender got $33.60 back — $49.87 of the original $50.00, the $0.13 relayer fee being the only
    cost. The core's balance returned to zero.
 
-Still to prove here: a contested auction with two providers, a payout attested at layer 1, and a
-default that slashes collateral to the sender. Those need the matcher bot, because a 5+5 block
-auction is over in about three seconds — too fast to drive by hand.
+Still to prove on **this** instance: a payout attested at layer 1, and a default that slashes
+collateral to the sender.
+
+## Monad testnet — pilot instance (chain `10143`)
+
+Deployed 20 September 2026. Same code, different windows.
+
+| Contract | Address |
+|---|---|
+| `RailCore` | [`0x90026A694D392888dd8feEbC63ccA729A037a2D0`](https://testnet.monadexplorer.com/address/0x90026A694D392888dd8feEbC63ccA729A037a2D0) |
+| `LPRegistry` | [`0x5Ea55eCaa06Fa530CfDB065bAeEEb05CC5cF0344`](https://testnet.monadexplorer.com/address/0x5Ea55eCaa06Fa530CfDB065bAeEEb05CC5cF0344) |
+| `SignedAttestor` (minLayer 1) | [`0x0ECc0916113D70875B7BEE2F27AF64cCfe57a90e`](https://testnet.monadexplorer.com/address/0x0ECc0916113D70875B7BEE2F27AF64cCfe57a90e) |
+
+`commitBlocks` and `revealBlocks` are **15**, not 5. Everything else is unchanged.
+
+### Why 15 and not 5
+
+Five blocks is the floor Monad's block time allows, and the first deployment used it. Measured
+against the public RPC from a laptop, a provider bot needs about six blocks between an order
+appearing and its commit being **mined** — the event has to arrive, the transaction has to be
+signed and broadcast, and it has to be included. The evidence, from live runs:
+
+| Attempt | Result |
+|---|---|
+| Polling, gas estimated per call | both bids reverted, 1 and 4 blocks late |
+| WebSocket, cached nonce and fees, pushed head | one bid landed with **0 blocks to spare**, the other 1 block late |
+| Same bots, 15-block window | **both landed with 9 blocks to spare** |
+
+A window only the luckiest bidder can reach is the opposite of what an auction is for: it produces
+one bid, not competition, and the sender pays more. Fifteen blocks lets providers on ordinary
+connections compete, and the whole auction still finishes in about twelve seconds.
+
+The protocol did not change. These are constructor parameters, and a deployment for providers who
+run their own nodes could still use five.
+
+### The contested auction
+
+Order [`0x22674ed69e03311fdd28b339cb5031f28f3098577ccb751111d7a586cb47ef2d`](https://testnet.monadexplorer.com/tx/0x22674ed69e03311fdd28b339cb5031f28f3098577ccb751111d7a586cb47ef2d),
+two independent `rail-matcher` instances bidding against each other:
+
+| Provider | Margin | Sealed bid | Outcome |
+|---|---|---|---|
+| `0x0F63…7fC6` | 1.5% | **$33.083442** | **won** |
+| `0x57CB…ce04` | 3.0% | $33.572360 | lost, collateral released |
+
+Both committed in the same block, both revealed, the lower bid won. On settlement:
+
+```
+winner paid            33,083,442 units   exactly its bid
+sender change returned    516,558 units   the saving from competition
+core balance                      0       the protocol kept nothing
+```
+
+33,083,442 + 516,558 = 33,600,000, the reserve price the sender signed. **The sender captured every
+cent of the saving**, which is invariant 5 holding on a live chain rather than in a test.
 
 ### Indexer
 

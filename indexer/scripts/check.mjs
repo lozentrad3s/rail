@@ -59,8 +59,11 @@ for (const chain of config.chains) {
   }
   for (const entry of chain.contracts) {
     if (!declared.has(entry.name)) problems.push(`chain ${chain.id}: ${entry.name} is not declared`);
-    if (!/^0x[0-9a-fA-F]{40}$/.test(entry.address)) {
-      problems.push(`chain ${chain.id}: ${entry.name} has a malformed address`);
+    // A contract may be deployed more than once; every address still has to be well formed.
+    for (const address of [entry.address].flat()) {
+      if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+        problems.push(`chain ${chain.id}: ${entry.name} has a malformed address: ${address}`);
+      }
     }
   }
 }
