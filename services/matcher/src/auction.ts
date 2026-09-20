@@ -19,6 +19,7 @@ import type { Config } from "./config.ts";
 import type { PriceSource } from "./pricing.ts";
 import { currencyCode, railCoreAbi, Status } from "./rail.ts";
 import type { Store } from "./store.ts";
+import type { GasFunction, Sender } from "./tx.ts";
 
 export class AuctionError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
@@ -33,6 +34,8 @@ export type Outcome =
   | { kind: "skipped"; why: string }
   /** Our price was above the sender's reserve. Someone cheaper should win. */
   | { kind: "priced-out"; bid: bigint; max: bigint }
+  /** We were too slow: the commit window closed before the bid could be sent. */
+  | { kind: "missed"; why: string; head: bigint }
   /** We bid and lost. No money moves, and the collateral is released. */
   | { kind: "lost"; winner: Address }
   /** We bid, won, and (unless a human must confirm first) marked the payout made. */
@@ -67,6 +70,14 @@ export type BidderDeps = {
   config: Config;
   prices: PriceSource;
   store: Store;
+  sender: Sender;
+  /**
+   * The chain head, kept current by a subscription.
+   *
+   * Asking the RPC costs ~250ms, which is most of a Monad block — measured one block too slow to
+   * make a five-block commit window. A pushed head makes every timing check free.
+   */
+  head: () => bigint;
   log?: (event: string, detail: Record<string, unknown>) => void;
 };
 
@@ -130,12 +141,29 @@ export class Bidder {
     }
     if (bid > event.maxAusd) return { kind: "priced-out", bid, max: event.maxAusd };
 
+    // A bid sent after the window closes is gas spent on a certain revert, so check first — against
+    // the pushed head, which costs nothing.
+    const sentAt = this.#deps.head();
+    if (sentAt > event.commitEnd) {
+      return { kind: "missed", why: "commit window closed before we could bid", head: sentAt };
+    }
+
     const salt = randomSalt();
     // Persisted before the commit is sent: a lost salt is a lost bid.
     store.remember({ orderId: event.orderId, amount: bid, salt });
 
-    await this.send("commitBid", [event.orderId, commitmentFor(event.orderId, account, bid, salt)]);
-    this.log("committed", { order: event.orderId, bid });
+    const minedAt = await this.send("commitBid", [
+      event.orderId,
+      commitmentFor(event.orderId, account, bid, salt),
+    ]);
+    this.log("committed", {
+      order: event.orderId,
+      bid,
+      sentAtBlock: sentAt,
+      minedAtBlock: minedAt,
+      commitEnd: event.commitEnd,
+      blocksToSpare: event.commitEnd - minedAt,
+    });
 
     await this.waitPast(event.commitEnd);
     await this.send("revealBid", [event.orderId, bid, salt]);
@@ -171,48 +199,33 @@ export class Bidder {
   }
 
   /**
-   * Sends a transaction with an explicit gas limit.
+   * Sends and confirms, using gas limits and a nonce that were known before the auction started.
    *
-   * Monad charges the declared limit rather than the gas used, so this simulates, estimates, and
-   * adds a fixed margin instead of letting the node pick a default.
+   * Monad charges the declared limit rather than the gas used, so the limits in tx.ts are measured
+   * from the contract test suite rather than guessed or estimated per call.
    */
-  private async send(functionName: string, args: readonly unknown[]): Promise<void> {
-    const { publicClient, walletClient, config, account } = this.#deps;
-
-    try {
-      const estimate = await publicClient.estimateContractGas({
-        address: config.railCore,
-        abi: railCoreAbi,
-        functionName: functionName as never,
-        args: args as never,
-        account,
-      });
-
-      const hash = await walletClient.writeContract({
-        address: config.railCore,
-        abi: railCoreAbi,
-        functionName: functionName as never,
-        args: args as never,
-        account,
-        chain: null,
-        gas: (estimate * 12n) / 10n,
-      });
-
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") throw new AuctionError(`${functionName} reverted`);
-    } catch (cause) {
-      if (cause instanceof AuctionError) throw cause;
-      throw new AuctionError(`${functionName} failed`, { cause });
-    }
+  private async send(functionName: GasFunction, args: readonly unknown[]): Promise<bigint> {
+    const hash = await this.#deps.sender.send(functionName, args);
+    return this.#deps.sender.confirm(hash, functionName);
   }
 
-  /** Waits until the chain is past a window boundary. Windows are inclusive. */
+  /**
+   * Waits until the chain is past a window boundary. Windows are inclusive.
+   *
+   * Reads the pushed head rather than polling the RPC, so waiting costs nothing and the reveal
+   * goes out on the first block that allows it.
+   */
   private async waitPast(block: bigint): Promise<void> {
-    const { publicClient, config } = this.#deps;
+    const { head, publicClient } = this.#deps;
     for (;;) {
-      const current = await publicClient.getBlockNumber();
-      if (current > block) return;
-      await new Promise((resolve) => setTimeout(resolve, Math.max(50, config.pollIntervalMs / 2)));
+      if (head() > block) return;
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      // If the subscription has stalled the head stops moving; fall back rather than hang.
+      if (head() === 0n) {
+        const current = await publicClient.getBlockNumber();
+        if (current > block) return;
+      }
     }
   }
 }

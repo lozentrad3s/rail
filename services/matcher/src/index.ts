@@ -6,8 +6,21 @@
  * wins, which is the whole argument for the protocol.
  *
  * It holds one key, which can stake collateral and bid. It never holds a sender's money.
+ *
+ * Orders arrive over a WebSocket subscription. Polling was measured at ~550ms per `eth_getLogs`
+ * against the public RPC, which is most of a five-block commit window spent waiting — the first
+ * live run lost both bids exactly that way. Polling stays as a fallback for when the socket will
+ * not open.
  */
-import { createPublicClient, createWalletClient, http, parseEventLogs, type Hex } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  parseEventLogs,
+  webSocket,
+  type Hex,
+  type Log,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { monadTestnet } from "viem/chains";
 
@@ -16,6 +29,21 @@ import { loadConfig } from "./config.ts";
 import { StaticRate } from "./pricing.ts";
 import { lpRegistryAbi, railCoreAbi } from "./rail.ts";
 import { Store } from "./store.ts";
+import { Sender } from "./tx.ts";
+
+/** The public RPC rejects wider ranges than this. */
+const MAX_LOG_RANGE = 99n;
+
+/** Unwraps the chain of causes, so a revert reason reaches the log rather than "commitBid failed". */
+function describe(error: unknown, depth = 3): string {
+  const parts: string[] = [];
+  let current: unknown = error;
+  for (let i = 0; current && i < depth; i++) {
+    parts.push(current instanceof Error ? current.message : String(current));
+    current = (current as { cause?: unknown }).cause;
+  }
+  return parts.join(" <- ").replace(/[\r\n]+/g, " ").slice(0, 400);
+}
 
 function log(event: string, detail: Record<string, unknown> = {}): void {
   const body = Object.entries(detail)
@@ -35,6 +63,19 @@ async function main(): Promise<void> {
   const publicClient = createPublicClient({ chain: monadTestnet, transport: http(config.rpcUrl) });
   const walletClient = createWalletClient({ account, chain: monadTestnet, transport: http(config.rpcUrl) });
 
+  const sender = new Sender({
+    publicClient,
+    walletClient,
+    account,
+    address: account.address,
+    abi: railCoreAbi,
+    contract: config.railCore,
+  });
+
+  // The head is pushed, not polled: asking the RPC costs ~250ms, which is most of a Monad block,
+  // and the first live runs missed the commit window by exactly one block because of it.
+  let head = 0n;
+
   const bidder = new Bidder({
     publicClient,
     walletClient,
@@ -42,6 +83,8 @@ async function main(): Promise<void> {
     config,
     prices: new StaticRate(config.rate, config.spreadBps, config.currencies),
     store: new Store(config.stateDir),
+    sender,
+    head: () => head,
     log,
   });
 
@@ -68,39 +111,17 @@ async function main(): Promise<void> {
   });
   log("eligible", { freeStake });
 
-  let fromBlock = await publicClient.getBlockNumber();
-  log("watching", { fromBlock, pollMs: config.pollIntervalMs });
+  // Nonce and fees are fetched now, so a live bid costs one round trip instead of four.
+  await sender.prime();
 
-  let stopping = false;
-  process.on("SIGINT", () => {
-    log("stopping");
-    stopping = true;
-  });
+  const seen = new Set<string>();
 
-  while (!stopping) {
-    await new Promise((resolve) => setTimeout(resolve, config.pollIntervalMs));
+  const bidOn = (logs: Log[]): void => {
+    for (const entry of parseEventLogs({ abi: railCoreAbi, eventName: "OrderCreated", logs })) {
+      // The socket and the fallback poller can both deliver the same order.
+      if (seen.has(entry.args.orderId)) continue;
+      seen.add(entry.args.orderId);
 
-    let latest: bigint;
-    try {
-      latest = await publicClient.getBlockNumber();
-    } catch (error) {
-      log("chain-head-unreadable", { error: String(error).slice(0, 120) });
-      continue;
-    }
-    if (latest < fromBlock) continue;
-
-    let logs;
-    try {
-      logs = await publicClient.getLogs({ address: config.railCore, fromBlock, toBlock: latest });
-    } catch (error) {
-      log("logs-unreadable", { error: String(error).slice(0, 120) });
-      continue;
-    }
-    fromBlock = latest + 1n;
-
-    const created = parseEventLogs({ abi: railCoreAbi, eventName: "OrderCreated", logs });
-
-    for (const entry of created) {
       const event: OrderCreated = {
         orderId: entry.args.orderId,
         currency: entry.args.currency,
@@ -111,17 +132,98 @@ async function main(): Promise<void> {
         revealEnd: BigInt(entry.args.revealEnd),
       };
 
-      // Deliberately not awaited: the commit window is about a second and a half, so a slow
-      // auction must never hold up the next one.
+      // Deliberately not awaited: an auction in progress must never delay the next one.
       void bidder
         .handleOrder(event)
         .then((outcome) => log(`outcome:${outcome.kind}`, { order: event.orderId, ...outcome }))
-        .catch((error) => log("bid-failed", { order: event.orderId, error: String(error).slice(0, 200) }));
+        .catch((error) => log("bid-failed", { order: event.orderId, error: describe(error) }));
+    }
+  };
+
+  let stopping = false;
+  const stop = (): void => {
+    log("stopping");
+    stopping = true;
+    sender.stop();
+  };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+
+  if (await subscribe(config.wsUrl, config.railCore, bidOn, (block) => (head = block))) {
+    log("watching", { via: "websocket", url: config.wsUrl });
+    while (!stopping) await new Promise((resolve) => setTimeout(resolve, 500));
+    return;
+  }
+
+  // Polling fallback: the head has to come from somewhere, so it comes from the loop below.
+  head = await publicClient.getBlockNumber();
+
+  log("watching", { via: "polling", pollMs: config.pollIntervalMs, why: "socket would not open" });
+  let fromBlock = await publicClient.getBlockNumber();
+
+  while (!stopping) {
+    await new Promise((resolve) => setTimeout(resolve, config.pollIntervalMs));
+
+    try {
+      head = await publicClient.getBlockNumber();
+      if (head < fromBlock) continue;
+
+      // The public RPC limits the range, and falling behind it must not wedge the bot.
+      const toBlock = head - fromBlock > MAX_LOG_RANGE ? fromBlock + MAX_LOG_RANGE : head;
+      const logs = await publicClient.getLogs({ address: config.railCore, fromBlock, toBlock });
+      fromBlock = toBlock + 1n;
+      bidOn(logs);
+    } catch (error) {
+      log("poll-failed", { error: describe(error) });
+      // Re-anchor on the head rather than retrying a range that may itself be the problem.
+      try {
+        fromBlock = await publicClient.getBlockNumber();
+      } catch {
+        // Try again on the next tick.
+      }
     }
   }
 }
 
+/**
+ * Subscribes to new orders and to the chain head. Returns false when the socket cannot be used.
+ *
+ * Both subscriptions matter: one says an auction has started, the other says what time it is — and
+ * knowing the time without asking is what makes a five-block window reachable.
+ */
+async function subscribe(
+  url: string,
+  address: Hex,
+  onLogs: (logs: Log[]) => void,
+  onHead: (block: bigint) => void,
+): Promise<boolean> {
+  try {
+    const socket = createPublicClient({
+      chain: monadTestnet,
+      transport: webSocket(url, { retryCount: 3, timeout: 10_000 }),
+    });
+    onHead(await socket.getBlockNumber());
+
+    socket.watchBlockNumber({
+      onBlockNumber: onHead,
+      onError: (error) => log("head-error", { error: describe(error) }),
+    });
+
+    socket.watchContractEvent({
+      address,
+      abi: railCoreAbi,
+      eventName: "OrderCreated",
+      onLogs: (logs) => onLogs(logs as Log[]),
+      onError: (error) => log("watch-error", { error: describe(error) }),
+    });
+    return true;
+  } catch (error) {
+    log("websocket-unavailable", { error: describe(error) });
+    return false;
+  }
+}
+
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(describe(error));
   process.exitCode = 1;
 });

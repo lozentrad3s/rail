@@ -14,6 +14,11 @@ export class ConfigError extends Error {
 /** How a provider bids, and the limits it will not cross. */
 export type Config = {
   rpcUrl: string;
+  /**
+   * WebSocket endpoint for order notifications. Polling costs ~550ms per `eth_getLogs` on the
+   * public RPC, which is most of a five-block commit window; a subscription costs nothing.
+   */
+  wsUrl: string;
   railCore: Address;
   lpRegistry: Address;
   /** Currencies this provider can actually deliver, as ISO codes. */
@@ -68,8 +73,11 @@ function bigNumber(key: string, fallback: bigint): bigint {
 
 export function loadConfig(env = process.env): Config {
   const spreadBps = bigNumber("SPREAD_BPS", 150n);
+  const rpcUrl = required("RPC_URL");
   return {
-    rpcUrl: required("RPC_URL"),
+    rpcUrl,
+    // Same endpoint over a socket unless one is given explicitly.
+    wsUrl: optional("WS_URL") ?? rpcUrl.replace(/^http/, "ws"),
     railCore: address("RAIL_CORE"),
     lpRegistry: address("LP_REGISTRY"),
     currencies: (optional("CURRENCIES") ?? "NGN")
@@ -87,7 +95,7 @@ export function loadConfig(env = process.env): Config {
         if (!isAddress(a)) throw new ConfigError("ATTESTOR_ALLOWLIST", `contains a bad address: ${a}`);
         return a;
       }),
-    pollIntervalMs: Number(bigNumber("POLL_INTERVAL_MS", 250n)),
+    pollIntervalMs: Number(bigNumber("POLL_INTERVAL_MS", 150n)),
     stateDir: optional("STATE_DIR") ?? ".matcher",
     autoConfirmPayout: /^(1|true)$/i.test(optional("AUTO_CONFIRM_PAYOUT") ?? ""),
     label: optional("MATCHER_LABEL") ?? `spread ${spreadBps}bps`,
