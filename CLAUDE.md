@@ -66,16 +66,27 @@ Never invent a type, error, endpoint or event that the interface doc doesn't def
   `docs/INTERFACES.md` — then say so explicitly.
 - Every attack test has a one-line comment stating the attack in plain English.
 
-## Services (`services/`) — Rust
+## Services (`services/`) — TypeScript
 
-- Cargo workspace. `axum` for HTTP, `alloy` for chain access, `tokio`, `thiserror` for typed errors,
-  `tracing` for logs. No `unwrap()`/`expect()` on request paths.
+Rust was the original choice and the interfaces were written for it. It was dropped on 20 Sep 2026
+because this project's only machine has 4GB of RAM and no Windows SDK, so nothing could link and
+every `alloy` rebuild cost minutes we don't have before 14 Oct. The language is not what is being
+judged; a working pilot is. The rules that mattered survive the move.
+
+- npm workspace, TypeScript, `viem` for chain access, `node:test` for tests. Node runs `.ts`
+  directly (type stripping), so there is no build step — `tsc --noEmit` is the type gate.
+- **Type stripping erases types, it does not compile them.** No parameter properties
+  (`constructor(private x: T)`), no `enum`, no `namespace` — Node rejects all three at load. Use
+  explicit fields, `as const` objects, and `.ts` extensions on relative imports.
+- **Typed errors, never bare throws on a request path.** One error type per service, with the codes
+  `docs/INTERFACES.md` §5 defines. No `any` in anything that touches money.
 - **Monad charges the declared `gasLimit`, not gas used.** Set an explicit `gas` on every
   transaction, derived from a measured estimate plus a fixed margin — never the node default.
 - The relayer is stateless with respect to funds: it holds MON for gas and nothing else.
 - Webhooks (Paystack, WhatsApp, Mono) are hostile until the signature verifies.
 - Paystack amounts are in **kobo**. AUSD has **6 decimals**. Convert at the boundary, name the unit
-  in the variable (`amount_kobo`, `amount_ausd_units`).
+  in the variable (`amountKobo`, `amountAusdUnits`). Chain amounts are `bigint`, never `number` — a
+  float rounding error here is somebody's money.
 - Secrets come from environment variables only. Never log them, never commit them.
 
 ## Sender UI (`web/`) and WhatsApp bot (`bot/`) — the ban list
@@ -119,5 +130,6 @@ forge build                      # compile
 forge test -vvv                  # all tests
 forge test --match-path "contracts/test/*.attack.t.sol"
 forge fmt                        # format
-cargo test --workspace           # services (from services/)
+npm test --workspaces            # services (from services/)
+npm run typecheck --workspaces   # services type gate
 ```

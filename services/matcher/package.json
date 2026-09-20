@@ -1,0 +1,19 @@
+{
+  "name": "rail-matcher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reference liquidity provider bot: bids in Rail's sealed auction and delivers the payout",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.ts",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.56.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}
