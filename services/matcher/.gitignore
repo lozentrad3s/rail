@@ -1,3 +1,4 @@
 node_modules/
 .env
-.matcher/
+# Bid salts: runtime state, and a provider’s to keep.
+.matcher*/
