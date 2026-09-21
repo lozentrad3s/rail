@@ -423,11 +423,16 @@ Design: `docs/DESIGN.md`.
 | `/send` | sender | Amount + recipient → quote → Face ID → done |
 | `/fund` | sender | Add dollars by card / Apple Pay / bank transfer via the embedded Ramp Network widget (AUSD on Monad; UK + US). Rail never touches the fiat |
 | `/c/[draftId]` | sender | Confirm a WhatsApp draft → Face ID |
-| `/k/[token]` | sender | Add a contact's bank details (from a WhatsApp `add` link) |
+| `/k/[code]` | sender | Add a contact's bank details (from a WhatsApp `add` link) |
+| `/l/[code]` | sender | Connect a WhatsApp number to this account — signs `"Rail link\ntoken: …\naddress: …"` and posts it to `POST /v1/accounts/link` (§5.1) |
 | `/o/[orderId]` | sender | Live status |
 | `/r/[orderId]` | recipient | "I received ₦X" one tap (L1) |
 | `/lp` | LP | Privy/Dynamic login, stake, live orders, earnings, reputation |
 | `/explorer` | public | Auctions, clearing rates, settlement times (from indexer) |
+
+The route segment is `[code]`, not `[token]`, while the wire field stays `token`: `token` is on the
+`CLAUDE.md` ban list, and the ban list covers file paths under `(sender)`. `web/src/lib/rail-api.ts`
+does the translation, so sender-facing code never spells the word.
 
 Passkeys: Mera, `rpId` = production domain, account path `m/44'/60'/0'/0/0`.
 
