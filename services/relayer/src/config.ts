@@ -23,6 +23,10 @@ export type Config = {
   recipientKey: Hex;
   /** Shared secret the bot presents on its own endpoints. */
   botApiKey: string | undefined;
+  /** Where the app lives, for the links the bot hands out. */
+  appBaseUrl: string;
+  /** Resolves account names so a sender sees who they are paying. */
+  paystackSecretKey: string | undefined;
 };
 
 function required(key: string): string {
@@ -72,5 +76,7 @@ export function loadConfig(): Config {
     quoteTtlSeconds: Number(bigNumber("QUOTE_TTL_SECONDS", 120n)),
     recipientKey: recipientKey as Hex,
     botApiKey: optional("BOT_API_KEY"),
+    appBaseUrl: (optional("APP_BASE_URL") ?? "http://localhost:3000").replace(/\/+$/, ""),
+    paystackSecretKey: optional("PAYSTACK_SECRET_KEY"),
   };
 }
