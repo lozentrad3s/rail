@@ -38,7 +38,11 @@ index nothing, forever.
 
 ## Deployed
 
-**Live GraphQL endpoint:** https://indexer.dev.hyperindex.xyz/c029a2e/v1/graphql
+**Live GraphQL endpoint:** https://indexer.dev.hyperindex.xyz/a353dde/v1/graphql
+
+On the development tier every deployment gets its own endpoint, so this URL changes on each push.
+`envio-cloud deployment endpoint` prints the current one; anything reading it in production should
+be pointed at a static endpoint instead.
 
 Built and synced 20 Sep 2026: codegen passed on Envio's Linux builders, the chain is 100% synced,
 and the first indexed order comes back with its currency decoded from `bytes3` and its escrow

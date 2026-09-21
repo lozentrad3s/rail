@@ -109,10 +109,14 @@ cent of the saving**, which is invariant 5 holding on a live chain rather than i
 directory `indexer`. Public GraphQL:
 
 ```
-https://indexer.dev.hyperindex.xyz/c029a2e/v1/graphql
+https://indexer.dev.hyperindex.xyz/a353dde/v1/graphql
 ```
 
-Synced from block 63549435. The free tier deletes deployments after 30 days and after 7 days of
+**The development tier gives each deployment its own endpoint**, so this URL changes every time we
+push. Get the current one with `envio-cloud deployment endpoint` rather than trusting a URL written
+down here. A static endpoint is a production-tier feature.
+
+Synced from block 63549435, covering both deployments. The free tier deletes deployments after 30 days and after 7 days of
 inactivity, so this must be redeployed close enough to judging (14–27 Oct) to still be alive.
 
 ### Costs measured
