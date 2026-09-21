@@ -34,6 +34,15 @@ import { Sender } from "./tx.ts";
 /** The public RPC rejects wider ranges than this. */
 const MAX_LOG_RANGE = 99n;
 
+/**
+ * If no new block arrives for this long, the subscription is dead even if nobody said so.
+ *
+ * Observed on testnet: the socket closed after about fifteen minutes and the bot carried on
+ * running, logging errors and never bidding again. A provider that has silently stopped bidding is
+ * worse than one that has crashed, because nobody notices.
+ */
+const HEAD_STALE_MS = 15_000;
+
 /** Unwraps the chain of causes, so a revert reason reaches the log rather than "commitBid failed". */
 function describe(error: unknown, depth = 3): string {
   const parts: string[] = [];
@@ -60,8 +69,10 @@ async function main(): Promise<void> {
   if (!rawKey) throw new Error("LP_PRIVATE_KEY is not set");
   const account = privateKeyToAccount(rawKey as Hex);
 
-  const publicClient = createPublicClient({ chain: monadTestnet, transport: http(config.rpcUrl) });
-  const walletClient = createWalletClient({ account, chain: monadTestnet, transport: http(config.rpcUrl) });
+  // A call with no deadline can hang the bot forever against a rate-limited node.
+  const transport = http(config.rpcUrl, { timeout: 10_000, retryCount: 2, retryDelay: 200 });
+  const publicClient = createPublicClient({ chain: monadTestnet, transport });
+  const walletClient = createWalletClient({ account, chain: monadTestnet, transport });
 
   const sender = new Sender({
     publicClient,
@@ -149,10 +160,44 @@ async function main(): Promise<void> {
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
 
-  if (await subscribe(config.wsUrl, config.railCore, bidOn, (block) => (head = block))) {
+  let lastHeadAt = Date.now();
+  const onHead = (block: bigint): void => {
+    head = block;
+    lastHeadAt = Date.now();
+  };
+
+  // Subscribe, then keep checking that the subscription is alive, reconnecting when it is not.
+  let subscription = await subscribe(config.wsUrl, config.railCore, bidOn, onHead);
+  if (subscription) {
     log("watching", { via: "websocket", url: config.wsUrl });
-    while (!stopping) await new Promise((resolve) => setTimeout(resolve, 500));
-    return;
+
+    while (!stopping) {
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      if (Date.now() - lastHeadAt < HEAD_STALE_MS) continue;
+
+      log("resubscribing", { silentForMs: Date.now() - lastHeadAt });
+      subscription();
+      subscription = undefined;
+
+      // The public node drops sockets and rate-limits reconnects, so back off and keep trying
+      // rather than giving up on the first refusal.
+      for (const delayMs of [0, 1_000, 3_000, 8_000, 20_000]) {
+        if (stopping) break;
+        if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+
+        subscription = await subscribe(config.wsUrl, config.railCore, bidOn, onHead);
+        if (subscription) break;
+      }
+
+      if (!subscription) {
+        log("websocket-gone", { falling_back_to: "polling" });
+        break;
+      }
+      log("resubscribed");
+      lastHeadAt = Date.now();
+    }
+
+    if (subscription) return;
   }
 
   // Polling fallback: the head has to come from somewhere, so it comes from the loop below.
@@ -186,17 +231,18 @@ async function main(): Promise<void> {
 }
 
 /**
- * Subscribes to new orders and to the chain head. Returns false when the socket cannot be used.
+ * Subscribes to new orders and to the chain head, returning a teardown function.
  *
  * Both subscriptions matter: one says an auction has started, the other says what time it is — and
- * knowing the time without asking is what makes a five-block window reachable.
+ * knowing the time without asking is what makes a short commit window reachable. The head doubles
+ * as a heartbeat: if it stops arriving, the caller knows to reconnect.
  */
 async function subscribe(
   url: string,
   address: Hex,
   onLogs: (logs: Log[]) => void,
   onHead: (block: bigint) => void,
-): Promise<boolean> {
+): Promise<(() => void) | undefined> {
   try {
     const socket = createPublicClient({
       chain: monadTestnet,
@@ -204,22 +250,30 @@ async function subscribe(
     });
     onHead(await socket.getBlockNumber());
 
-    socket.watchBlockNumber({
+    const unwatchHead = socket.watchBlockNumber({
       onBlockNumber: onHead,
       onError: (error) => log("head-error", { error: describe(error) }),
     });
 
-    socket.watchContractEvent({
+    const unwatchOrders = socket.watchContractEvent({
       address,
       abi: railCoreAbi,
       eventName: "OrderCreated",
       onLogs: (logs) => onLogs(logs as Log[]),
       onError: (error) => log("watch-error", { error: describe(error) }),
     });
-    return true;
+
+    return () => {
+      try {
+        unwatchHead();
+        unwatchOrders();
+      } catch {
+        // Tearing down a socket that is already gone is not a failure.
+      }
+    };
   } catch (error) {
     log("websocket-unavailable", { error: describe(error) });
-    return false;
+    return undefined;
   }
 }
 

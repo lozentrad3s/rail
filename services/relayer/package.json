@@ -1,0 +1,19 @@
+{
+  "name": "rail-relayer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sender-facing API: quotes a transfer, submits the order the sender signed, and tells the winning provider where to pay",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.ts",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.56.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}

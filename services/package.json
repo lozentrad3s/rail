@@ -1,7 +1,10 @@
 {
   "name": "rail-services",
   "private": true,
-  "workspaces": ["matcher"],
+  "workspaces": [
+    "matcher",
+    "relayer"
+  ],
   "scripts": {
     "test": "npm test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
