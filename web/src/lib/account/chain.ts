@@ -5,12 +5,19 @@ import { createPublicClient, http, erc20Abi, formatUnits, type Address } from "v
 import { monadTestnet } from "viem/chains";
 
 /** AUSD, 6 decimals. Testnet address — docs/INTERFACES.md §1. */
-const SETTLEMENT_ASSET: Address = "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC";
+export const SETTLEMENT_ASSET: Address = (process.env.NEXT_PUBLIC_SETTLEMENT_ASSET ||
+  "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC") as Address;
+
+/** RailCore: the escrow the authorisation names as its recipient. */
+export const ESCROW: Address = (process.env.NEXT_PUBLIC_RAIL_CORE ||
+  "0x90026A694D392888dd8feEbC63ccA729A037a2D0") as Address;
+
+export const CHAIN_ID = monadTestnet.id;
 const DECIMALS = 6;
 
 const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || monadTestnet.rpcUrls.default.http[0];
 
-const client = createPublicClient({ chain: monadTestnet, transport: http(rpcUrl) });
+export const client = createPublicClient({ chain: monadTestnet, transport: http(rpcUrl) });
 
 /**
  * True while balances are play money.

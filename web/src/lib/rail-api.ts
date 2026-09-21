@@ -44,6 +44,49 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown })
   return parsed as T;
 }
 
+export type DraftDetail = {
+  draftId: string;
+  currency: string;
+  localAmount: string;
+  expiresAt: number;
+  recipient: {
+    contactName: string;
+    bankCode: string;
+    bankName: string;
+    /** The one place a sender sees this in full, so they can check it before Face ID. */
+    accountNumber: string;
+    accountName: string;
+  };
+};
+
+export type QuoteDetail = {
+  currency: string;
+  localAmount: string;
+  indicativeAusd: string;
+  maxAusd: string;
+  fee: string;
+  currencyBytes3: string;
+  relayer: string;
+  attestor: string;
+  expiresAt: number;
+};
+
+/** What the chat proposed. Opening it changes nothing; only the signature does. */
+export function readDraft(draftId: string): Promise<DraftDetail> {
+  return call(`/v1/drafts/${encodeURIComponent(draftId)}`);
+}
+
+export function readQuote(currency: string, localAmount: string): Promise<QuoteDetail> {
+  return call(
+    `/v1/quote?currency=${encodeURIComponent(currency)}&localAmount=${encodeURIComponent(localAmount)}`,
+  );
+}
+
+/** Hands over what the passkey already signed. The relayer pays the fee and can alter nothing. */
+export function submitOrder(body: unknown): Promise<{ orderId: string; status: string }> {
+  return call("/v1/orders", { method: "POST", body });
+}
+
 /** What the app signs to prove this account is the one behind the chat. */
 export function linkMessage(token: string, address: string): string {
   return `Rail link\ntoken: ${token}\naddress: ${address}`;
