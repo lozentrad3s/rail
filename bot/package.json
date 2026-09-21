@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env src/index.ts",
     "test": "node --test \"test/**/*.test.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "journey": "node scripts/journey.ts"
   },
   "dependencies": {
     "viem": "^2.56.8"

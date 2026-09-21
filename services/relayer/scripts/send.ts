@@ -40,9 +40,16 @@ async function api(path: string, init?: RequestInit): Promise<Record<string, str
   return body;
 }
 
+/** A field the relayer must have sent. A script that quietly reads `undefined` is a script that lies. */
+function must(body: Record<string, string | undefined>, field: string): string {
+  const value = body[field];
+  if (value === undefined) throw new Error(`the relayer did not return ${field}`);
+  return value;
+}
+
 // 1. What will this cost?
 const quote = await api("/v1/quote?currency=NGN&localAmount=5000000");
-console.log(`quote     ₦50,000 → at most ${dollars(quote.maxAusd)} plus ${dollars(quote.fee)} fee`);
+console.log(`quote     ₦50,000 → at most ${dollars(must(quote, "maxAusd"))} plus ${dollars(must(quote, "fee"))} fee`);
 
 // 2. Where is it going? The bank details never reach the chain — only a salted hash does.
 const recipient = {
@@ -63,9 +70,9 @@ const intent = {
   sender: sender.address,
   recipientCommitment,
   currency: quote.currencyBytes3 as Hex,
-  localAmount: BigInt(quote.localAmount),
-  maxAusd: BigInt(quote.maxAusd),
-  fee: BigInt(quote.fee),
+  localAmount: BigInt(must(quote, "localAmount")),
+  maxAusd: BigInt(must(quote, "maxAusd")),
+  fee: BigInt(must(quote, "fee")),
   relayer: quote.relayer as Hex,
   attestor: quote.attestor as Hex,
   salt: `0x${Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex")}` as Hex,
@@ -146,7 +153,7 @@ let last = "";
 for (let i = 0; i < 40; i++) {
   await new Promise((resolve) => setTimeout(resolve, 3000));
   const order = await api(`/v1/orders/${created.orderId}`);
-  const line = `${order.status}${order.winner ? ` winner=${order.winner} bid=${dollars(order.winningBid)}` : ""}`;
+  const line = `${order.status}${order.winner ? ` winner=${order.winner} bid=${dollars(must(order, "winningBid"))}` : ""}`;
   if (line !== last) {
     console.log(`status    ${line}`);
     last = line;
