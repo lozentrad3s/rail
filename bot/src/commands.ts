@@ -1,0 +1,55 @@
+/**
+ * What a message means.
+ *
+ * Structured commands only. A general-purpose assistant is banned on the WhatsApp Business
+ * Platform, and an assistant that can be talked into anything is the wrong shape for a payments
+ * bot regardless: anything this parser does not recognise becomes `help`, never a guess.
+ */
+import { parseAmount } from "./amounts.ts";
+
+export type Command =
+  | { kind: "help" }
+  | { kind: "welcome" }
+  | { kind: "balance" }
+  | { kind: "contacts" }
+  | { kind: "add"; contactName: string }
+  | { kind: "send"; localAmount: bigint; contactName: string }
+  | { kind: "send-unreadable-amount" }
+  | { kind: "account-number" };
+
+/** A run of 8–11 digits is an account number in every market we serve. */
+const LOOKS_LIKE_ACCOUNT = /(?<!\d)\d{8,11}(?!\d)/;
+
+const GREETINGS = new Set(["hi", "hello", "hey", "start", "/start", "menu", "good morning", "good afternoon", "good evening"]);
+
+export function parseCommand(raw: string): Command {
+  const text = raw.trim().replace(/\s+/g, " ");
+  const lower = text.toLowerCase();
+
+  if (lower === "help" || lower === "/help" || lower === "?") return { kind: "help" };
+  if (GREETINGS.has(lower)) return { kind: "welcome" };
+  if (lower === "balance" || lower === "bal") return { kind: "balance" };
+  if (lower === "contacts" || lower === "contact" || lower === "list") return { kind: "contacts" };
+
+  const send = /^send\s+(.+?)\s+to\s+(.+)$/i.exec(text);
+  if (send) {
+    const [, amountText = "", contactName = ""] = send;
+    const localAmount = parseAmount(amountText);
+    if (localAmount === undefined) return { kind: "send-unreadable-amount" };
+    return { kind: "send", localAmount, contactName: contactName.trim() };
+  }
+
+  // Anchored on a word boundary, or "address" parses as adding a contact called "ress".
+  const add = /^add(?:\s+(.*))?$/i.exec(text);
+  if (add) {
+    const contactName = (add[1] ?? "").trim();
+    // "add 0123456789" is someone pasting details. Handle it as a paste, not as a name.
+    if (LOOKS_LIKE_ACCOUNT.test(contactName)) return { kind: "account-number" };
+    return contactName ? { kind: "add", contactName } : { kind: "add", contactName: "" };
+  }
+
+  // Checked after the commands so "send 50000000 to mum" is a transfer, not a paste.
+  if (LOOKS_LIKE_ACCOUNT.test(text)) return { kind: "account-number" };
+
+  return { kind: "help" };
+}

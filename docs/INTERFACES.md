@@ -395,8 +395,10 @@ Loop per `OrderCreated`: filter by currency, max size and **attestor allowlist**
   15 Jan 2026): `send <amount> to <contact>`, `add <contact>`, `contacts`, `balance`, `help`.
   Amounts accept `50k`, `50,000`, `₦50000`. Anything else → `help`.
 - `add <contact>` calls `POST /v1/contact-links` and replies with the link. **The bot never asks for,
-  accepts, or echoes a full account number.** If a user pastes a 10-digit number, the bot doesn't
-  store it and replies with the link instead.
+  accepts, or echoes a full account number.** If a user pastes anything that looks like an
+  account number, the bot doesn't store it and doesn't echo it back; it replies with how to add
+  that person safely. It cannot reply with a contact link there, because a contact link is created
+  against a name and the paste doesn't carry one.
 - `send` calls `GET /v1/contacts` + `POST /v1/drafts` + `GET /v1/quote`, replies with account name,
   bank, `····<last4>`, amount in naira, indicative price in dollars, and the deep link.
 - `balance` reads the linked account via `GET /v1/accounts`, reads its balance on-chain (read-only)
