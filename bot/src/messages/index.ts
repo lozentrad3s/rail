@@ -57,7 +57,7 @@ export const welcome = (): string =>
 
 export const addContact = (contactName: string, url: string): string =>
   [
-    `Adding ${contactName}.`,
+    `Adding ${safeName(contactName)}.`,
     "",
     "Open this to enter their account details safely:",
     url,
@@ -81,27 +81,60 @@ export const accountNumberInChat = (): string =>
     "Tell me who they are instead, like *add mum*, and I will send you a private place to enter the details.",
   ].join("\n");
 
-export const contactList = (contacts: ContactLine[]): string =>
-  [
+/** More than this and the reply stops being readable long before WhatsApp stops accepting it. */
+const LIST_LIMIT = 15;
+
+export const contactList = (contacts: ContactLine[]): string => {
+  const shown = contacts.slice(0, LIST_LIMIT);
+  const hidden = contacts.length - shown.length;
+
+  return [
     "You can send to:",
     "",
-    ...contacts.map(
+    ...shown.map(
       (contact, index) =>
-        `${index + 1}. *${contact.contactName}* — ${contact.accountName}, ${contact.bankName} ····${contact.accountLast4}`,
+        `${index + 1}. *${safeName(contact.contactName)}* — ${safeName(contact.accountName)}, ${safeName(contact.bankName)} ····${contact.accountLast4}`,
     ),
+    ...(hidden > 0 ? ["", `…and ${hidden} more.`] : []),
     "",
     "Try: send 50k to mum",
   ].join("\n");
+};
 
 export const noContacts = (): string =>
   ["You have not added anyone yet.", "", "Start with: *add mum*"].join("\n");
 
-export const unknownContact = (contactName: string): string =>
-  [
-    `I do not have anyone called "${contactName}".`,
+/**
+ * A name is whatever someone typed, and it comes straight back out.
+ *
+ * So it is trimmed first: asterisks and underscores are WhatsApp's own formatting, and a name of
+ * unbounded length turns a short reply into a wall of someone else's text.
+ */
+export function safeName(raw: string): string {
+  let cleaned = "";
+  for (const char of raw) {
+    const code = char.codePointAt(0) ?? 0;
+    // Control characters, zero-width marks and bidi overrides: invisible, and used to disguise text.
+    if (code < 0x20 || code === 0x7f) continue;
+    if (code >= 0x200b && code <= 0x200f) continue;
+    if (code >= 0x202a && code <= 0x202e) continue;
+    // WhatsApp reads these as formatting, so a name could italicise the rest of the message.
+    if ("*_~`".includes(char)) continue;
+    cleaned += char;
+  }
+
+  const trimmed = cleaned.trim();
+  return trimmed.length > 32 ? `${trimmed.slice(0, 32)}…` : trimmed;
+}
+
+export const unknownContact = (contactName: string): string => {
+  const name = safeName(contactName);
+  return [
+    `I do not have anyone called "${name}".`,
     "",
-    `Say *add ${contactName}* to add them, or *contacts* to see who you have.`,
+    `Say *add ${name}* to add them, or *contacts* to see who you have.`,
   ].join("\n");
+};
 
 export const unreadableAmount = (): string =>
   ["I could not read that amount.", "", "Try: *send 50k to mum* or *send 50,000 to mum*"].join("\n");
@@ -115,8 +148,8 @@ export const confirmSend = (input: {
   url: string;
 }): string =>
   [
-    `Send ${naira(input.localAmount)} to *${input.contact.contactName}*`,
-    `${input.contact.accountName} · ${input.contact.bankName} ····${input.contact.accountLast4}`,
+    `Send ${naira(input.localAmount)} to *${safeName(input.contact.contactName)}*`,
+    `${safeName(input.contact.accountName)} · ${safeName(input.contact.bankName)} ····${input.contact.accountLast4}`,
     "",
     `About ${dollars(input.indicativeUnits)} today. You will see the exact amount before you approve.`,
     "",
