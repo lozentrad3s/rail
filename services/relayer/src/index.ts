@@ -8,10 +8,11 @@
  */
 import { createServer } from "node:http";
 
-import { createPublicClient, createWalletClient, http, type Hex } from "viem";
+import { createPublicClient, createWalletClient, http, isAddress, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { monadTestnet } from "viem/chains";
 
+import { createAccountLink, getLinkedAccount, linkAccount } from "./accounts.ts";
 import { loadConfig } from "./config.ts";
 import { createContactLink, listContacts, saveContact } from "./contacts.ts";
 import { createDraft, readDraft } from "./drafts.ts";
@@ -119,6 +120,34 @@ const router = new Router()
   .get("/v1/contacts", async ({ query, request }) => {
     requireBot(request);
     return listContacts(vault, requireString(query.get("waId"), "waId"));
+  })
+
+  // A number is bound to an account only by a signature from that account.
+  .post("/v1/account-links", async ({ body, request }) => {
+    requireBot(request);
+    const input = (body ?? {}) as Record<string, unknown>;
+    return createAccountLink(vault, requireString(input.waId, "waId"), config.appBaseUrl);
+  })
+
+  // Used by the app. The signature is the authorisation; there is no bot key here.
+  .post("/v1/accounts/link", async ({ body }) => {
+    const input = (body ?? {}) as Record<string, unknown>;
+    const address = requireString(input.address, "address");
+    if (!isAddress(address)) throw new RelayerError("BAD_REQUEST", "address is not an address.");
+
+    const { waId, address: linked } = await linkAccount(vault, {
+      token: requireString(input.token, "token"),
+      address,
+      signature: requireString(input.signature, "signature") as Hex,
+    });
+    return { waId, address: linked };
+  })
+
+  .get("/v1/accounts", async ({ query, request }) => {
+    requireBot(request);
+    const linked = getLinkedAccount(vault, requireString(query.get("waId"), "waId"));
+    if (!linked) throw new RelayerError("NOT_FOUND", "This number has no account yet.");
+    return { address: linked.address };
   })
 
   .post("/v1/drafts", async ({ body, request }) => {
