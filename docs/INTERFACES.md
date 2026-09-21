@@ -313,6 +313,9 @@ Sender-facing. Holds MON for gas and nothing else. One signer key.
 | `GET /v1/banks?currency=NGN` | — | `[{ code, name }]` |
 | `GET /v1/accounts/resolve?currency=NGN&bankCode=058&accountNumber=0001234567` | — | `{ accountName }` via Paystack `GET /bank/resolve`. `ACCOUNT_NOT_RESOLVED` on failure |
 | `GET /v1/quote?currency=NGN&localAmount=5000000` | — | `{ currency, localAmount, indicativeAusd, maxAusd, fee, relayer, attestor, rate, expiresAt }` |
+| `POST /v1/account-links` 🔑bot | `{ waId }` | `{ url }` — `url = https://<domain>/l/<token>`, single use, expires in 15 min. Sent when a chat needs an account that does not exist yet |
+| `POST /v1/accounts/link` | `{ token, address, signature }` | Binds a WhatsApp number to an account. `signature` is EIP-191 `personal_sign` over `"Rail link\ntoken: <token>\naddress: <address>"`, so the app proves it holds the passkey for `address`. Returns `{ waId, address }` |
+| `GET /v1/accounts?waId=` 🔑bot | — | `{ address }`, or `NOT_FOUND` when the number has no account yet |
 | `POST /v1/contact-links` 🔑bot | `{ waId, contactName }` | `{ url }` — `url = https://<domain>/k/<token>`, single use, expires in 15 min |
 | `POST /v1/contacts` | `{ token, currency, bankCode, accountNumber }` | Resolves the name via Paystack, stores the contact against the link's `waId`. Returns `{ contactId, contactName, accountName, bankName, accountLast4 }` |
 | `GET /v1/contacts?waId=` 🔑bot | — | `[{ contactId, contactName, accountName, bankName, accountLast4 }]` — **never the full number** |
@@ -396,7 +399,12 @@ Loop per `OrderCreated`: filter by currency, max size and **attestor allowlist**
   store it and replies with the link instead.
 - `send` calls `GET /v1/contacts` + `POST /v1/drafts` + `GET /v1/quote`, replies with account name,
   bank, `····<last4>`, amount in naira, indicative price in dollars, and the deep link.
-- `balance` reads the linked account's balance (read-only) and replies in dollars.
+- `balance` reads the linked account via `GET /v1/accounts`, reads its balance on-chain (read-only)
+  and replies in dollars. An unlinked number gets an account link instead, never an error.
+
+**The link proves the passkey, not the phone.** `POST /v1/accounts/link` requires a signature from
+the account itself, so taking over a WhatsApp number cannot attach it to someone else's money, and
+the relayer never learns a private key.
 - Every user-visible string lives in `bot/src/messages` and passes the ban list in `CLAUDE.md`.
 - **Never** holds a key, calls `POST /v1/orders`, or signs anything.
 
