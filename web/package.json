@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:passkey": "node e2e/passkey.mjs"
+    "test:passkey": "node e2e/passkey.mjs",
+    "test:approve": "node e2e/approve.mjs"
   },
   "dependencies": {
     "@category-labs/mera": "^0.2.0",
