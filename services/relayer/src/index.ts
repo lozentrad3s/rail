@@ -68,7 +68,7 @@ function requireString(value: unknown, field: string): string {
   return value.trim();
 }
 
-const router = new Router()
+const router = new Router({ allowedOrigins: config.allowedOrigins })
   .get("/healthz", async () => ({ ok: true }))
 
   .get("/v1/banks", async ({ query }) => {

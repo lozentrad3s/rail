@@ -45,7 +45,9 @@ describe("SubmissionQueue", () => {
       return 42;
     });
 
-    await assert.rejects(queue.submit(async () => Promise.reject(new Error("nonce too low"))));
+    // Deliberately not a nonce error: this is about any failure forcing a re-read. A stale nonce
+    // has its own behaviour, covered below.
+    await assert.rejects(queue.submit(async () => Promise.reject(new Error("node unreachable"))));
     const seen: number[] = [];
     await queue.submit(async (nonce) => {
       seen.push(nonce);
@@ -63,5 +65,75 @@ describe("SubmissionQueue", () => {
     // A rejected promise in the chain must not wedge every later order.
     const hash = await queue.submit(async () => "0xstill-here" as Hex);
     assert.equal(hash, "0xstill-here");
+  });
+});
+
+describe("recovering from a nonce the chain has moved past", () => {
+  // Something else used the signer between reading the count and sending. That attempt can never
+  // be mined, so the sender should not be told their transfer failed.
+  it("re-reads and tries once more", async () => {
+    let onChain = 5;
+    const seen: number[] = [];
+    const queue = new SubmissionQueue(async () => onChain);
+
+    const hash = await queue.submit(async (nonce) => {
+      seen.push(nonce);
+      if (nonce === 5) {
+        onChain = 9; // the chain moved on while this was in flight
+        throw new Error("Nonce provided for the transaction (5) is lower than the current nonce");
+      }
+      return `0x${"ab".repeat(32)}`;
+    });
+
+    assert.deepEqual(seen, [5, 9], "it should retry on the nonce the chain actually has");
+    assert.match(hash, /^0xab/);
+  });
+
+  // One retry, not a loop: a node that always says this is a node to stop talking to.
+  it("gives up after one retry", async () => {
+    let attempts = 0;
+    const queue = new SubmissionQueue(async () => 1);
+
+    await assert.rejects(
+      queue.submit(async () => {
+        attempts += 1;
+        throw new Error("nonce too low");
+      }),
+      /nonce too low/,
+    );
+    assert.equal(attempts, 2);
+  });
+
+  // Retrying these could send the same order twice — the first may still be pending.
+  it("never retries a failure that might have been accepted", async () => {
+    for (const message of ["already known", "replacement transaction underpriced", "insufficient funds"]) {
+      let attempts = 0;
+      const queue = new SubmissionQueue(async () => 1);
+
+      await assert.rejects(
+        queue.submit(async () => {
+          attempts += 1;
+          throw new Error(message);
+        }),
+      );
+      assert.equal(attempts, 1, message);
+    }
+  });
+
+  it("leaves the queue usable afterwards", async () => {
+    let onChain = 3;
+    const queue = new SubmissionQueue(async () => onChain);
+
+    await assert.rejects(queue.submit(async () => {
+      throw new Error("insufficient funds");
+    }));
+
+    onChain = 4;
+    const seen: number[] = [];
+    await queue.submit(async (nonce) => {
+      seen.push(nonce);
+      return `0x${"cd".repeat(32)}`;
+    });
+    assert.deepEqual(seen, [4], "a failure must not wedge every later order");
   });
 });

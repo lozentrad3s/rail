@@ -308,6 +308,11 @@ Error codes: `BAD_REQUEST` `UNAUTHORIZED` `NOT_FOUND` `QUOTE_EXPIRED` `ACCOUNT_N
 
 Sender-facing. Holds MON for gas and nothing else. One signer key.
 
+The app calls this from a browser on another origin, so every response carries CORS headers for an
+origin on the `ALLOWED_ORIGINS` allowlist (defaulting to `APP_BASE_URL`), and `OPTIONS` answers the
+preflight with `204`. An origin not on the list gets no CORS headers — never `*`. This is not what
+protects the 🔑bot endpoints; their shared secret is, because CORS only binds browsers.
+
 | Endpoint | Body / query | Returns |
 |---|---|---|
 | `GET /v1/banks?currency=NGN` | — | `[{ code, name }]` |

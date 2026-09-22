@@ -17,6 +17,33 @@ export type Handler = (context: {
 
 type Route = { method: string; pattern: string[]; handler: Handler };
 
+export type RouterOptions = {
+  /** Origins the app may call from. Never `*`: an allowlist is the only defensible answer. */
+  allowedOrigins?: string[];
+};
+
+/**
+ * CORS headers for this request, or none.
+ *
+ * An origin that is not on the list gets nothing back, which is what stops a page on some other
+ * site reading a sender's contacts out of their browser. It is not what protects the bot's own
+ * endpoints — CORS only binds browsers, and their shared secret does that job.
+ */
+function corsHeaders(
+  origin: string | undefined,
+  allowed: string[],
+): Record<string, string> {
+  if (!origin || !allowed.includes(origin)) return {};
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-headers": "content-type, authorization",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-max-age": "600",
+    // The origin decides the response, so caches must not serve one origin's answer to another.
+    vary: "Origin",
+  };
+}
+
 /** Big numbers go over the wire as decimal strings, never as JSON numbers (docs §1). */
 function serialise(value: unknown): string {
   return JSON.stringify(value, (_key, item) => (typeof item === "bigint" ? item.toString() : item));
@@ -24,6 +51,11 @@ function serialise(value: unknown): string {
 
 export class Router {
   readonly #routes: Route[] = [];
+  readonly #allowedOrigins: string[];
+
+  constructor(options: RouterOptions = {}) {
+    this.#allowedOrigins = options.allowedOrigins ?? [];
+  }
 
   add(method: string, path: string, handler: Handler): this {
     this.#routes.push({ method, pattern: path.split("/").filter(Boolean), handler });
@@ -60,6 +92,16 @@ export class Router {
   async handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const url = new URL(request.url ?? "/", "http://localhost");
     const segments = url.pathname.split("/").filter(Boolean);
+    const origin = typeof request.headers.origin === "string" ? request.headers.origin : undefined;
+    const cors = corsHeaders(origin, this.#allowedOrigins);
+
+    // The preflight never reaches a handler: it asks permission, it does not do anything.
+    if (request.method === "OPTIONS") {
+      response.writeHead(204, cors);
+      response.end();
+      return;
+    }
+
     const match = this.#match(request.method ?? "GET", segments);
 
     try {
@@ -73,13 +115,14 @@ export class Router {
         request,
       });
 
-      response.writeHead(200, { "content-type": "application/json" });
+      response.writeHead(200, { "content-type": "application/json", ...cors });
       response.end(serialise(result));
     } catch (cause) {
       const error = toRelayerError(cause);
       if (error.code === "INTERNAL") console.error("unhandled", cause);
 
-      response.writeHead(error.status, { "content-type": "application/json" });
+      // Errors carry the headers too, or the browser reports a CORS failure instead of the reason.
+      response.writeHead(error.status, { "content-type": "application/json", ...cors });
       response.end(serialise(error.toJSON()));
     }
   }

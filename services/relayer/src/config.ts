@@ -25,6 +25,8 @@ export type Config = {
   botApiKey: string | undefined;
   /** Where the app lives, for the links the bot hands out. */
   appBaseUrl: string;
+  /** Origins the browser app may call from. Defaults to the app itself. */
+  allowedOrigins: string[];
   /** Resolves account names so a sender sees who they are paying. */
   paystackSecretKey: string | undefined;
 };
@@ -57,6 +59,7 @@ function bigNumber(key: string, fallback: bigint): bigint {
 }
 
 export function loadConfig(): Config {
+  const appBaseUrl = (optional("APP_BASE_URL") ?? "http://localhost:3000").replace(/\/+$/, "");
   const relayerKey = required("RELAYER_PRIVATE_KEY");
   const recipientKey = required("RECIPIENT_ENCRYPTION_KEY");
   if (!/^0x[0-9a-fA-F]{64}$/.test(recipientKey)) {
@@ -76,7 +79,13 @@ export function loadConfig(): Config {
     quoteTtlSeconds: Number(bigNumber("QUOTE_TTL_SECONDS", 120n)),
     recipientKey: recipientKey as Hex,
     botApiKey: optional("BOT_API_KEY"),
-    appBaseUrl: (optional("APP_BASE_URL") ?? "http://localhost:3000").replace(/\/+$/, ""),
+    appBaseUrl,
+    // The app is always allowed to call the relayer; anything else has to be named explicitly.
+    allowedOrigins:
+      optional("ALLOWED_ORIGINS")
+        ?.split(",")
+        .map((origin) => origin.trim().replace(/\/+$/, ""))
+        .filter(Boolean) ?? [appBaseUrl],
     paystackSecretKey: optional("PAYSTACK_SECRET_KEY"),
   };
 }
