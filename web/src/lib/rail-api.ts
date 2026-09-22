@@ -7,7 +7,13 @@
 
 const BASE = (process.env.NEXT_PUBLIC_RELAYER_URL || "http://localhost:8787").replace(/\/+$/, "");
 
-export type ApiFailure = "expired" | "rejected" | "offline" | "unknown";
+export type ApiFailure =
+  | "expired"
+  | "rejected"
+  | "offline"
+  | "account-not-found"
+  | "not-configured"
+  | "unknown";
 
 export class ApiError extends Error {
   readonly reason: ApiFailure;
@@ -36,12 +42,73 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown })
   const parsed = text ? (JSON.parse(text) as unknown) : {};
 
   if (!response.ok) {
-    const code = (parsed as { error?: { code?: string } }).error?.code;
+    const error = (parsed as { error?: { code?: string; message?: string } }).error;
+    const code = error?.code;
     if (code === "NOT_FOUND") throw new ApiError("expired", "This link has expired.");
     if (code === "UNAUTHORIZED") throw new ApiError("rejected", "That didn't match.");
+    if (code === "ACCOUNT_NOT_RESOLVED") {
+      // The relayer says this either when the bank cannot find the account, or when name checking
+      // is not configured at all. They read very differently to a person, so they are separated.
+      const configured = !/not configured/i.test(error?.message ?? "");
+      throw new ApiError(
+        configured ? "account-not-found" : "not-configured",
+        error?.message ?? "That account could not be found.",
+      );
+    }
     throw new ApiError("unknown", "That didn't work. Nothing has been charged.");
   }
   return parsed as T;
+}
+
+export type Bank = { code: string; name: string };
+
+export type SavedContact = {
+  contactId: string;
+  contactName: string;
+  accountName: string;
+  bankName: string;
+  accountLast4: string;
+};
+
+/** The banks a sender can choose from. Cached by the relayer; a list changes rarely. */
+export function listBanks(currency: string): Promise<Bank[]> {
+  return call(`/v1/banks?currency=${encodeURIComponent(currency)}`);
+}
+
+/**
+ * Who the bank says owns this account.
+ *
+ * This is the single most valuable check in the flow: it is what lets a sender see the real name
+ * before they commit, so a typo in an account number becomes an obviously wrong name rather than
+ * money sent to a stranger.
+ */
+export function resolveAccountName(input: {
+  bankCode: string;
+  accountNumber: string;
+}): Promise<{ accountName: string }> {
+  const query = new URLSearchParams({
+    bankCode: input.bankCode,
+    accountNumber: input.accountNumber,
+  });
+  return call(`/v1/accounts/resolve?${query.toString()}`);
+}
+
+/** Turns the one-time link into a saved recipient. The link is consumed here. */
+export function saveContact(input: {
+  code: string;
+  currency: string;
+  bankCode: string;
+  accountNumber: string;
+}): Promise<SavedContact> {
+  return call("/v1/contacts", {
+    method: "POST",
+    body: {
+      token: input.code,
+      currency: input.currency,
+      bankCode: input.bankCode,
+      accountNumber: input.accountNumber,
+    },
+  });
 }
 
 export type DraftDetail = {
