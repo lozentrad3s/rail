@@ -13,7 +13,7 @@ export function Auction() {
         <Reveal className="mx-auto max-w-[52rem] text-center">
           <Eyebrow tone="night">The auction</Eyebrow>
           <h2 id="auction-title" className="mt-5 text-h2">
-            <span className="sm:whitespace-nowrap">Three seconds. Sealed bids.</span>{" "}
+            <span className="sm:whitespace-nowrap">Half a minute. Sealed bids.</span>{" "}
             <span className="accent-serif text-accent-soft sm:block">Lowest wins.</span>
           </h2>
           <p className="mx-auto mt-6 max-w-[38rem] text-lead text-night-muted">

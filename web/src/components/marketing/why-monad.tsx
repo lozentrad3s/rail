@@ -38,8 +38,10 @@ export function WhyMonad() {
               long, or costs too much, to sit inside a payment.
             </p>
             <p className="mt-4 max-w-[36rem] text-body text-night-muted">
-              On Monad both rounds finish in about three seconds, with final settlement, for near-zero fees. And
-              every sender is a new Monad account — created with Face ID by someone who has never used crypto.
+              On Monad a round is measured in blocks, not minutes. Our pilot runs 30 blocks each way — about half
+              a minute for both rounds and final settlement, at near-zero fees — and the windows are that wide to
+              give providers on ordinary connections room to compete, not because the chain needs it. And every
+              sender is a new Monad account, created with Face ID by someone who has never used crypto.
             </p>
             <blockquote className="mt-10 border-l-2 border-accent pl-5">
               <p className="text-[clamp(1.375rem,1.1rem+1vw,1.75rem)] leading-[1.3] tracking-[-0.015em]">

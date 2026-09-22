@@ -17,9 +17,9 @@ const STEPS = [
     detail: "RailCore escrow · AUSD",
   },
   {
-    title: "Providers bid for three seconds",
+    title: "Providers bid for half a minute",
     body: "Sealed bids first, so nobody can copy a price. Then they reveal. The lowest wins.",
-    detail: "Commit–reveal · 5 + 5 blocks",
+    detail: "Commit–reveal · 30 + 30 blocks",
   },
   {
     title: "The winner pays your family",
