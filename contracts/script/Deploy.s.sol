@@ -21,15 +21,23 @@ import {SignedAttestor} from "../src/SignedAttestor.sol";
  */
 contract Deploy is Script {
     /**
+     * How long a provider has to get a bid in.
+     *
      * Five blocks is the theoretical floor at Monad's block time, and it is what the first
-     * deployment used. Measured on testnet, a provider bot on a public RPC needs about six blocks
-     * between an order appearing and its commit being mined — so five let only the luckiest bidder
-     * in, which is the opposite of what an auction is for. Fifteen leaves room for providers on
-     * ordinary connections to compete, and the whole auction still finishes in about twelve
-     * seconds. Override with COMMIT_BLOCKS / REVEAL_BLOCKS.
+     * deployment used. Fifteen replaced it, and fifteen was still too tight: measured on the public
+     * testnet RPC, inclusion alone takes 3 blocks at the median and 5 at the worst, and a real
+     * commit — detect the order, price it, sign it, get it mined — was observed taking 7. One bid
+     * in a live run missed its window by a single block and the auction closed with nobody in it.
+     *
+     * Thirty leaves roughly four times the worst measured inclusion latency as headroom, so a
+     * provider on an ordinary connection can compete rather than only the luckiest one. The whole
+     * auction still finishes inside half a minute, against days for the incumbents.
+     *
+     * The real fix is a dedicated RPC endpoint, which would cut the variance this is padding
+     * against. Until there is one, the padding stays. Override with COMMIT_BLOCKS / REVEAL_BLOCKS.
      */
-    uint64 constant COMMIT_BLOCKS = 15;
-    uint64 constant REVEAL_BLOCKS = 15;
+    uint64 constant COMMIT_BLOCKS = 30;
+    uint64 constant REVEAL_BLOCKS = 30;
     uint64 constant PAYOUT_BLOCKS = 2000;
     uint64 constant DISPUTE_BLOCKS = 200;
     uint64 constant RESOLUTION_BLOCKS = 2000;

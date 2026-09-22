@@ -130,6 +130,42 @@ inactivity, so this must be redeployed close enough to judging (14–27 Oct) to 
 
 ---
 
+## Monad testnet — current instance (chain `10143`)
+
+Deployed 21 September 2026. Same code again; `commitBlocks` and `revealBlocks` are **30**.
+
+| Contract | Address |
+|---|---|
+| `RailCore` | [`0x1DdEa1bBA4978BF5C58889c9F1f9ef09e21236DE`](https://testnet.monadexplorer.com/address/0x1DdEa1bBA4978BF5C58889c9F1f9ef09e21236DE) |
+| `LPRegistry` | [`0x6AFD778Bc2B6d65a152Ec11F2afF7f2dE4975930`](https://testnet.monadexplorer.com/address/0x6AFD778Bc2B6d65a152Ec11F2afF7f2dE4975930) |
+| `SignedAttestor` (minLayer 1) | [`0x93032BD9bf29b3867e02CD33ca016F58ad2A85D8`](https://testnet.monadexplorer.com/address/0x93032BD9bf29b3867e02CD33ca016F58ad2A85D8) |
+
+### Why 30 and not 15
+
+Fifteen was still too tight. On 21 September a live order through the app went to auction and
+**closed with nobody in it**: the winning provider's commit was mined in block 64458457 against a
+window that ended at 64458456. One block.
+
+Measured immediately afterwards, against the same public RPC:
+
+| | blocks |
+|---|---|
+| Inclusion of a bare transfer, median of 6 | 3 |
+| Inclusion of a bare transfer, worst of 6 | 5 |
+| A real commit — detect, price, sign, mine (observed) | 7 |
+
+Fifteen blocks left about half the window for everything that is not inclusion, and lost the race
+once in two attempts. Thirty leaves roughly four times the worst measured inclusion latency, and
+the whole auction still finishes inside half a minute.
+
+The real fix is a dedicated RPC endpoint rather than the public one, which would cut the variance
+this is padding against. Until there is one, the padding stays.
+
+Providers are staked with `script/Stake.s.sol`; `minStake` is $100, and both pilot providers hold
+$200 of free stake on this instance.
+
+---
+
 ## Monad mainnet (chain `143`)
 
 Not deployed. Mainnet AUSD is [`0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`](https://monadscan.com/address/0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a).

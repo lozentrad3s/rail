@@ -45,17 +45,20 @@ chains:
   - id: 10143 # Monad testnet
     start_block: 63549435 # the block Rail was deployed in
     contracts:
-      # Two deployments: the first used the theoretical five-block windows, the pilot uses fifteen
-      # so providers on ordinary connections can compete. Both are indexed into one dataset.
+      # Three deployments: five-block windows, then fifteen, then thirty — each widened after a
+      # live run showed bids missing the window on a public RPC. All indexed into one dataset.
       - name: RailCore
         address:
           - "0xf0A34887d703300FA73533678A4a1f9D3B68c27F"
           - "0x90026A694D392888dd8feEbC63ccA729A037a2D0"
+          - "0x1DdEa1bBA4978BF5C58889c9F1f9ef09e21236DE"
       - name: LPRegistry
         address:
           - "0xbcbB919329A3f86ddC6A3c948788201c2fD48b5a"
           - "0x5Ea55eCaa06Fa530CfDB065bAeEEb05CC5cF0344"
+          - "0x6AFD778Bc2B6d65a152Ec11F2afF7f2dE4975930"
       - name: SignedAttestor
         address:
           - "0x2D6637D0F9C89648B39eF5f776E9923734C8CFdA"
           - "0x0ECc0916113D70875B7BEE2F27AF64cCfe57a90e"
+          - "0x93032BD9bf29b3867e02CD33ca016F58ad2A85D8"

@@ -23,7 +23,7 @@ import { monadTestnet } from "viem/chains";
 const RELAYER = process.env.RELAYER_URL ?? "http://localhost:8787";
 const RPC_URL = process.env.RPC_URL ?? "https://testnet-rpc.monad.xyz";
 const AUSD = (process.env.AUSD_ADDRESS ?? "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC") as Hex;
-const RAIL_CORE = (process.env.RAIL_CORE ?? "0x90026A694D392888dd8feEbC63ccA729A037a2D0") as Hex;
+const RAIL_CORE = (process.env.RAIL_CORE ?? "0x1DdEa1bBA4978BF5C58889c9F1f9ef09e21236DE") as Hex;
 
 const sender = privateKeyToAccount(process.env.TESTNET_SENDER_PRIVATE_KEY as Hex);
 const client = createPublicClient({ chain: monadTestnet, transport: http(RPC_URL) });
