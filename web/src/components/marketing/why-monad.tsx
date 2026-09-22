@@ -5,7 +5,7 @@ import { Reveal } from "./reveal";
 const STATS = [
   { value: "300ms", label: "Block time", note: "One tick of the auction" },
   { value: "600ms", label: "Finality", note: "A won bid is settled, not provisional" },
-  { value: "~3s", label: "A full sealed auction", note: "5 commit blocks + 5 reveal blocks" },
+  { value: "~24s", label: "A full sealed auction", note: "30 commit blocks + 30 reveal blocks" },
   { value: "≈0", label: "Fees", note: "Near-zero — so a $50 transfer is worth auctioning" },
 ];
 
