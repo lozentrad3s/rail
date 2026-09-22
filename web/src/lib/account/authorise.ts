@@ -16,10 +16,10 @@ import {
   parseAbiParameters,
   type Address,
   type Hex,
-  type LocalAccount,
 } from "viem";
 
 import { CHAIN_ID, client, ESCROW, SETTLEMENT_ASSET } from "./chain";
+import type { TransferSigner } from "./signer";
 
 /** Long enough to walk from the chat to the app, short enough that a stale price is not signed. */
 const VALID_FOR_SECONDS = 600;
@@ -70,12 +70,13 @@ const domainAbi = parseAbi([
  * signature authorises a transfer that has not happened.
  */
 export async function authoriseTransfer(input: {
-  signer: LocalAccount;
-  address: Address;
+  signer: TransferSigner;
   terms: Terms;
   recipient: Recipient;
 }): Promise<SignedOrder> {
-  const { signer, address, terms, recipient } = input;
+  const { signer, terms, recipient } = input;
+  // Whoever the signer is, the order is bound to its address and nobody else can spend against it.
+  const address = signer.address;
 
   // The bank details never reach the chain. A salted hash does, and the salt is 32 bytes because a
   // ten-digit account number without one is brute-forced in seconds (invariant 3).
@@ -120,19 +121,8 @@ export async function authoriseTransfer(input: {
   const validAfter = BigInt(now - BACKDATE_SECONDS);
   const validBefore = BigInt(now + VALID_FOR_SECONDS);
 
-  const signature = await signer.signTypedData({
+  const signature = await signer.sign({
     domain: { name, version, chainId: CHAIN_ID, verifyingContract: SETTLEMENT_ASSET },
-    types: {
-      ReceiveWithAuthorization: [
-        { name: "from", type: "address" },
-        { name: "to", type: "address" },
-        { name: "value", type: "uint256" },
-        { name: "validAfter", type: "uint256" },
-        { name: "validBefore", type: "uint256" },
-        { name: "nonce", type: "bytes32" },
-      ],
-    },
-    primaryType: "ReceiveWithAuthorization",
     message: {
       from: address,
       // `receiveWithAuthorization`, never `transferWithAuthorization`: the latter is front-runnable.

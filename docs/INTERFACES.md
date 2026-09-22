@@ -429,6 +429,7 @@ Design: `docs/DESIGN.md`.
 | `/fund` | sender | Add dollars by card / Apple Pay / bank transfer via the embedded Ramp Network widget (AUSD on Monad; UK + US). Rail never touches the fiat |
 | `/c/[draftId]` | sender | Confirm a WhatsApp draft → Face ID |
 | `/k/[code]` | sender | Add a contact's bank details (from a WhatsApp `add` link) |
+| `/connect` | sender | Connect an EVM wallet on Monad as the signing account, for people who already have one. Route group `(connect)`, exempt from the ban list per `CLAUDE.md` |
 | `/l/[code]` | sender | Connect a WhatsApp number to this account — signs `"Rail link\ntoken: …\naddress: …"` and posts it to `POST /v1/accounts/link` (§5.1) |
 | `/o/[orderId]` | sender | Live status |
 | `/r/[orderId]` | recipient | "I received ₦X" one tap (L1) |
@@ -438,6 +439,17 @@ Design: `docs/DESIGN.md`.
 The route segment is `[code]`, not `[token]`, while the wire field stays `token`: `token` is on the
 `CLAUDE.md` ban list, and the ban list covers file paths under `(sender)`. `web/src/lib/rail-api.ts`
 does the translation, so sender-facing code never spells the word.
+
+**Two signers, one authorisation.** The sender signs with a passkey or with a connected EVM wallet,
+and the bytes are identical either way: an EIP-712 `ReceiveWithAuthorization` over the AUSD domain
+(§3.1), with the order id as the nonce. `RailCore` cannot tell them apart and must not be able to.
+
+A connected wallet needs no funding step. The authorisation pulls exactly `maxAusd + fee` from the
+sender's own wallet when the relayer submits, and `maxAusd - bid` returns on settlement — so the
+money never leaves their custody until the escrow takes it, and only ever the amount they approved.
+
+`web/src/lib/account/signer.ts` resolves whichever signer this device has; everything downstream
+takes a `TransferSigner` and does not care which it got.
 
 Passkeys: Mera, `rpId` = production domain, account path `m/44'/60'/0'/0/0`.
 

@@ -7,7 +7,7 @@
  * decision.
  */
 import { authoriseTransfer, type Terms } from "@/lib/account/authorise";
-import { unlockAccount } from "@/lib/account/passkey";
+import { signerFor, type SignerKind } from "@/lib/account/signer";
 import { readDraft, readQuote, submitOrder } from "@/lib/rail-api";
 
 export type Proposal = {
@@ -68,17 +68,20 @@ export async function loadProposal(draftId: string): Promise<Proposal> {
 }
 
 /**
- * Face ID, one signature, handed over.
+ * One approval, one signature, handed over.
  *
  * The session is ended in every case, including failure: approving a transfer never leaves
- * something on the device that could sign another one.
+ * something on the device that could sign another one. For a connected wallet that is a no-op,
+ * because the key was never ours to hold.
  */
-export async function approveProposal(proposal: Proposal): Promise<{ reference: string }> {
-  const unlocked = await unlockAccount();
+export async function approveProposal(
+  proposal: Proposal,
+  kind: SignerKind,
+): Promise<{ reference: string }> {
+  const signer = await signerFor(kind);
   try {
     const signed = await authoriseTransfer({
-      signer: unlocked.signer,
-      address: unlocked.address,
+      signer,
       terms: proposal.terms,
       recipient: {
         bankCode: proposal.recipient.bankCode,
@@ -90,6 +93,6 @@ export async function approveProposal(proposal: Proposal): Promise<{ reference: 
     const { orderId } = await submitOrder(signed);
     return { reference: orderId };
   } finally {
-    unlocked.end();
+    signer.end();
   }
 }

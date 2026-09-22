@@ -9,7 +9,7 @@ import { ngn, usd } from "@/lib/format";
 import { spring } from "@/lib/motion";
 import { ApiError } from "@/lib/rail-api";
 import { approveProposal, loadProposal, type Proposal } from "@/lib/transfer";
-import { AccountError, loadAccount } from "@/lib/account/passkey";
+import { preferredSigner, signerFailure, type SignerKind } from "@/lib/account/signer";
 
 type Failure = { title: string; detail: string };
 
@@ -31,7 +31,22 @@ const FAILURES: Record<string, Failure> = {
     title: "We couldn't reach Rail",
     detail: "Check your connection and try again. Nothing has left your account.",
   },
-  rejected: UNKNOWN,
+  rejected: {
+    title: "That was declined",
+    detail: "Nothing has left your account. Tap again whenever you are ready.",
+  },
+  "wrong-chain": {
+    title: "Your other app is set to the wrong network",
+    detail: "Switch it over and try again. Nothing has left your account.",
+  },
+  "chain-add-failed": {
+    title: "Your other app could not add the network",
+    detail: "Add it there yourself, then come back and try again.",
+  },
+  "none-available": {
+    title: "Nothing on this device can approve",
+    detail: "Set up Face ID, or open Rail in an app that can approve payments.",
+  },
   unknown: UNKNOWN,
 };
 
@@ -49,9 +64,10 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
   const [reference, setReference] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
-  const [hasAccount, setHasAccount] = useState<boolean | null>(null);
+  // Which key this device can sign with. Read after mount: the server has no idea.
+  const [signer, setSigner] = useState<SignerKind | null | undefined>(undefined);
 
-  useEffect(() => setHasAccount(loadAccount() !== null), []);
+  useEffect(() => setSigner(preferredSigner() ?? null), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,26 +85,21 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
   }, [draftId]);
 
   const approve = async () => {
-    if (!proposal) return;
+    if (!proposal || !signer) return;
     setBusy(true);
     setFailure(null);
     try {
-      const { reference: orderReference } = await approveProposal(proposal);
+      const { reference: orderReference } = await approveProposal(proposal, signer);
       setReference(orderReference);
     } catch (error) {
-      const reason =
-        error instanceof ApiError
-          ? error.reason
-          : error instanceof AccountError
-            ? error.reason
-            : "unknown";
+      const reason = error instanceof ApiError ? error.reason : signerFailure(error) ?? "unknown";
       setFailure(FAILURES[reason] ?? UNKNOWN);
     } finally {
       setBusy(false);
     }
   };
 
-  if (hasAccount === false) {
+  if (signer === null) {
     return (
       <Screen>
         <div className="flex flex-1 flex-col justify-center py-12">
@@ -103,6 +114,13 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
           >
             <ScanFace className="size-[19px]" strokeWidth={2.2} aria-hidden="true" />
             Set up with Face ID
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/connect")}
+            className="btn btn-secondary-paper mt-3 w-full"
+          >
+            Use an account I already have
           </button>
         </div>
       </Screen>
@@ -194,7 +212,13 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
               className="btn btn-primary mt-8 w-full text-[1rem]"
             >
               <ScanFace className="size-[19px]" strokeWidth={2.2} aria-hidden="true" />
-              {busy ? "Look at your phone…" : "Approve with Face ID"}
+              {signer === "connected"
+                ? busy
+                  ? "Waiting for your approval…"
+                  : "Approve to send"
+                : busy
+                  ? "Look at your phone…"
+                  : "Approve with Face ID"}
             </button>
 
             <ul className="text-small mt-9 grid gap-3.5 text-ink-muted">

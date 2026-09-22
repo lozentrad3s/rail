@@ -18,7 +18,9 @@ Never invent a type, error, endpoint or event that the interface doc doesn't def
 1. **Rail never holds, moves, or touches fiat.** No contract, service, or bot may custody local
    currency or initiate a fiat payout on a user's behalf. LPs (including AZA as LP #0) pay out on
    their own accounts and licences. Any design where Rail custodies fiat is rejected.
-2. **WhatsApp proposes; the passkey authorises.** The bot never holds a signing key, never holds a
+2. **WhatsApp proposes; the sender's own key authorises** — a passkey, or a wallet they connected.
+   Which of the two it is does not matter and never has: what matters is that the key is theirs and
+   the bot has never held it. The bot never holds a signing key, never holds a
    session, and never submits anything that moves funds. It returns a deep link; the PWA signs.
    The bot never asks for, accepts, or displays a full bank account number — Meta's policy forbids
    requesting financial account numbers in chat. Account details are entered in the PWA via a
@@ -104,6 +106,20 @@ Allowed: "Face ID", "passkey", "dollars", "digital dollars", "secure". LP-facing
 LPs already have wallets. The landing site (`web/src/app/(marketing)`) has two registers: the hero
 and every call to action follow the ban list; the protocol and Monad chapters may use precise terms
 for judges and builders (see `docs/DESIGN.md` §8).
+
+**The connect surface is exempt, on the same reasoning as the LP pages.** Someone arriving with an
+EVM wallet already has one, and refusing to name it would make the screen unusable — you cannot ask
+a person to connect a thing you will not call anything. That surface is `web/src/app/(connect)` and
+`web/src/components/connect`, which sit outside the grep above by design, not by accident.
+
+The exemption is narrow and these two limits are absolute:
+
+- **`bot/src/messages` is never exempt.** Meta's commerce policy is a ban risk for the number, and
+  no funding convenience is worth the number. The bot says "approve on your phone" and sends a
+  link; the word lives behind the link, never in the chat.
+- **The passkey path stays.** Connect is the second door, for people who already have wallets, not
+  a replacement. Somebody with no wallet and no crypto must still be able to send money, because
+  that person is the entire point of Rail.
 
 ## Design (`web/`)
 
