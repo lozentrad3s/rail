@@ -3,3 +3,7 @@
 # CRE build artefacts
 .cre_build_tmp.js
 *.wasm
+
+# Secret references live here. Untracked, so a real key added later cannot be committed by
+# accident — the file itself is a template the CRE CLI expects to exist.
+secrets.yaml
