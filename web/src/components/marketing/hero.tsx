@@ -25,7 +25,7 @@ export function Hero() {
 
           <p className="mt-6 max-w-[34rem] text-lead text-night-muted">
             Type an amount in the chat and confirm with Face ID. Your family’s bank account receives naira.
-            Local providers compete to deliver every transfer — and the saving comes back to you.
+            Local providers compete to deliver every transfer, and the saving comes back to you.
           </p>
 
           <div className="mt-9 flex flex-wrap gap-3">

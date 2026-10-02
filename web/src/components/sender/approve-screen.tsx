@@ -183,7 +183,7 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
               {ngn(Number(proposal.localAmountMinor) / 100)}
             </p>
 
-            <div className="mt-7 rounded-[18px] bg-surface p-4 shadow-card">
+            <div className="clay mt-7 p-4">
               <p className="text-small text-ink-muted">To</p>
               <p className="mt-0.5 text-[1.0625rem] font-semibold">
                 {proposal.recipient.accountName}
@@ -223,7 +223,7 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
 
             <ul className="text-small mt-9 grid gap-3.5 text-ink-muted">
               <Assurance icon={<ShieldCheck className="size-[18px]" strokeWidth={2} />}>
-                You will never pay more than the amount above — and whatever is not needed comes
+                You will never pay more than the amount above, and whatever is not needed comes
                 back to you.
               </Assurance>
               <Assurance icon={<Landmark className="size-[18px]" strokeWidth={2} />}>

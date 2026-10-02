@@ -188,7 +188,7 @@ export function RecipientScreen({ code }: { code: string }) {
               value={bankCode}
               onChange={(event) => setBankCode(event.target.value)}
               disabled={banks === null || banks.length === 0}
-              className="h-12 rounded-[14px] bg-surface px-3.5 text-[1rem] shadow-card outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="h-12 rounded-[14px] bg-surface px-3.5 text-[1rem] shadow-[var(--clay-raise)] outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <option value="">{banks === null ? "Loading…" : "Choose a bank"}</option>
               {(banks ?? []).map((bank) => (
@@ -210,7 +210,7 @@ export function RecipientScreen({ code }: { code: string }) {
               autoComplete="off"
               placeholder={"0".repeat(ACCOUNT_DIGITS)}
               aria-describedby="account-hint"
-              className="h-12 rounded-[14px] bg-surface px-3.5 font-mono text-[1rem] tracking-[0.04em] shadow-card outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="h-12 rounded-[14px] bg-surface px-3.5 font-mono text-[1rem] tracking-[0.04em] shadow-[var(--clay-raise)] outline-none focus-visible:ring-2 focus-visible:ring-accent"
             />
             <span id="account-hint" className="text-small text-ink-muted">
               {accountNumber.length}/{ACCOUNT_DIGITS} digits
@@ -225,7 +225,7 @@ export function RecipientScreen({ code }: { code: string }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, transition: { duration: 0.15 } }}
               transition={spring.settle}
-              className="mt-5 rounded-[18px] bg-surface p-4 shadow-card"
+              className="clay mt-5 p-4"
             >
               <p className="text-small text-ink-muted">Their bank says this account belongs to</p>
               <p className="mt-0.5 text-[1.0625rem] font-semibold" aria-live="polite">
@@ -271,7 +271,7 @@ export function RecipientScreen({ code }: { code: string }) {
 
         <ul className="text-small mt-10 grid gap-3.5 text-ink-muted">
           <Assurance icon={<ShieldCheck className="size-[18px]" strokeWidth={2} />}>
-            Their account number is kept encrypted and never appears in the chat — only the last
+            Their account number is kept encrypted and never appears in the chat. Only the last
             four digits do.
           </Assurance>
         </ul>

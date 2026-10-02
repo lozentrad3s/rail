@@ -21,7 +21,7 @@ export function Providers() {
           </h2>
           <p className="mt-6 max-w-[34rem] text-lead text-ink-muted">
             Licensed companies and individuals bid in the same auction, under the same rules. No brand, no balance
-            sheet, no permission needed — just stake, and a bank account you already use.
+            sheet, no permission needed. Just stake, and a bank account you already use.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <ButtonLink href={site.pilotUrl} tone="paper" disabledLabel="Provider sign-up opens October 2026">

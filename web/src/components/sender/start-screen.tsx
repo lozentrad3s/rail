@@ -124,7 +124,7 @@ export function StartScreen() {
 
         <ul className="text-small mt-11 grid gap-3.5 text-ink-muted">
           <Assurance icon={<ShieldCheck className="size-[18px]" strokeWidth={2} />}>
-            Only your face approves a transfer — not us, and not anyone holding your phone.
+            Only your face approves a transfer. Not us, and not anyone holding your phone.
           </Assurance>
           <Assurance icon={<Landmark className="size-[18px]" strokeWidth={2} />}>
             Your family needs nothing but their normal bank account.

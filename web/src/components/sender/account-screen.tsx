@@ -113,11 +113,11 @@ export function AccountScreen() {
               className="figure mt-3 text-[clamp(2.75rem,2rem+3vw,3.25rem)] leading-none tracking-[-0.03em]"
               aria-live="polite"
             >
-              {dollars === null ? <span className="text-night-muted">$—</span> : usd(dollars)}
+              {dollars === null ? <span className="text-night-muted">$-.--</span> : usd(dollars)}
             </motion.p>
 
             <p className="text-small mt-3 max-w-[20rem] text-night-muted">
-              Held in dollars. Nobody can move it without your face — not us, not anyone holding your
+              Held in dollars. Nobody can move it without your face. Not us, and not anyone holding your
               phone.
             </p>
           </div>
@@ -125,12 +125,12 @@ export function AccountScreen() {
 
         {unreachable ? (
           <Notice icon={<CircleAlert className="size-4" strokeWidth={2.2} />} title="Can't reach your balance">
-            Your money is safe — this is the connection, not your account. Tap refresh in a moment.
+            Your money is safe. This is the connection, not your account. Tap refresh in a moment.
           </Notice>
         ) : null}
 
         {/* One passkey, two accounts. The second costs no extra prompt and no extra passkey. */}
-        <section className="mt-3 flex items-center justify-between gap-3 rounded-[18px] bg-surface px-5 py-4 shadow-card">
+        <section className="clay mt-3 flex items-center justify-between gap-3 px-5 py-4">
           <div className="min-w-0">
             <p className="text-label text-ink-muted">Savings</p>
             <p className="text-small mt-1 text-ink-muted">
@@ -141,7 +141,7 @@ export function AccountScreen() {
           </div>
           {savingsAddress ? (
             <p className="figure shrink-0 text-[1.375rem] leading-none tracking-[-0.02em]">
-              {savingsDollars === null ? "$—" : usd(savingsDollars)}
+              {savingsDollars === null ? "$-.--" : usd(savingsDollars)}
             </p>
           ) : (
             <button

@@ -28,7 +28,7 @@ export function LastMile() {
           </h2>
           <p className="mt-6 max-w-[34rem] text-lead text-ink-muted">
             Moving money across a border takes seconds now. Turning it into naira in a real bank account is where
-            the cost hides — inside the exchange rate, where you can’t see it.
+            the cost hides, inside the exchange rate where you can’t see it.
           </p>
           <p className="mt-4 max-w-[34rem] text-body text-ink-muted">
             Sub-Saharan Africa is the most expensive region in the world to send money to. Rail puts every transfer

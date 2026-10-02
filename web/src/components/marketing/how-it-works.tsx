@@ -13,7 +13,7 @@ const STEPS = [
   },
   {
     title: "Your dollars wait in escrow",
-    body: "They sit in an open contract — not with us — until your family is paid.",
+    body: "They sit in an open contract, not with us, until your family is paid.",
     detail: "RailCore escrow · AUSD",
   },
   {
@@ -53,8 +53,8 @@ export function HowItWorks() {
               From a chat message to a bank alert in <span className="accent-serif">six steps</span>.
             </h2>
             <p className="mt-6 max-w-[30rem] text-lead text-ink-muted">
-              You see the first step and the last. Everything in between is an open protocol that anyone can check —
-              and nobody, including us, can quietly change.
+              You see the first step and the last. Everything in between is an open protocol that anyone can
+              check, and that nobody, including us, can quietly change.
             </p>
           </Reveal>
         </div>

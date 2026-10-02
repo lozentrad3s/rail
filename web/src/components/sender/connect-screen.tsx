@@ -150,7 +150,7 @@ export function ConnectScreen({ code }: { code: string }) {
               animate={{ opacity: 1, y: 0 }}
               transition={spring.settle}
             >
-              <span className="flex size-12 items-center justify-center rounded-full bg-surface text-accent shadow-card">
+              <span className="flex size-12 items-center justify-center rounded-full bg-surface text-accent shadow-[var(--clay-raise)]">
                 <MessageCircle className="size-6" strokeWidth={2.2} aria-hidden="true" />
               </span>
               <h1 className="text-h2 mt-6">

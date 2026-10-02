@@ -31,7 +31,7 @@ const FAILURES: Record<WalletFailure, { title: string; detail: string }> = {
   "no-wallet": {
     title: "No wallet in this browser",
     detail:
-      "Open Rail in MetaMask, Rabby or another wallet's browser — or set up a Rail account with Face ID instead, which needs no wallet at all.",
+      "Open Rail in MetaMask, Rabby or another wallet's browser. Or set up a Rail account with Face ID instead, which needs no wallet at all.",
   },
   rejected: {
     title: "You declined the request",
@@ -131,12 +131,12 @@ export function ConnectWalletScreen() {
               </span>
               <h1 className="text-h2 mt-6">Connected.</h1>
 
-              <div className="mt-7 rounded-[18px] bg-surface p-4 shadow-card">
+              <div className="clay mt-7 p-4">
                 <p className="text-small text-ink-muted">Your wallet</p>
                 <p className="mt-0.5 font-mono text-[1.0625rem] font-semibold">{short(address)}</p>
                 <p className="text-small mt-3 text-ink-muted">Available to send</p>
                 <p className="text-h3 mt-0.5 tabular-nums">
-                  {dollars === null ? "—" : usd(dollars)}
+                  {dollars === null ? "$-.--" : usd(dollars)}
                 </p>
               </div>
 
@@ -163,14 +163,14 @@ export function ConnectWalletScreen() {
               animate={{ opacity: 1, y: 0 }}
               transition={spring.settle}
             >
-              <span className="flex size-12 items-center justify-center rounded-full bg-surface text-accent shadow-card">
+              <span className="flex size-12 items-center justify-center rounded-full bg-surface text-accent shadow-[var(--clay-raise)]">
                 <Wallet className="size-6" strokeWidth={2.2} aria-hidden="true" />
               </span>
               <h1 className="text-h2 mt-6">
                 Use the wallet you <span className="accent-serif text-accent">already have</span>.
               </h1>
               <p className="text-lead mt-4 text-ink-muted">
-                Connect any EVM wallet on Monad. There is nothing to top up and no balance to move —
+                Connect any EVM wallet on Monad. There is nothing to top up and no balance to move:
                 your dollars stay where they are until a transfer you approve takes exactly what it
                 needs.
               </p>
@@ -191,7 +191,7 @@ export function ConnectWalletScreen() {
                 onClick={() => router.push("/start")}
                 className="btn btn-secondary-paper mt-3 w-full"
               >
-                I don&apos;t have a wallet — use Face ID
+                I don&apos;t have a wallet, use Face ID
               </button>
 
               <ul className="text-small mt-11 grid gap-3.5 text-ink-muted">

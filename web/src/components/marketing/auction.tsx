@@ -18,7 +18,7 @@ export function Auction() {
           </h2>
           <p className="mx-auto mt-6 max-w-[38rem] text-lead text-night-muted">
             Every transfer is auctioned. Providers commit to a price nobody else can see, then reveal it. The
-            cheapest provider who has staked enough to cover their bid wins — and the difference goes back to
+            cheapest provider who has staked enough to cover their bid wins, and the difference goes back to
             the sender.
           </p>
         </Reveal>
@@ -45,7 +45,7 @@ export function Auction() {
             <div>
               <dt className="font-semibold text-night-text">Who keeps the saving?</dt>
               <dd className="mt-1.5 text-night-muted">
-                The sender. The winner receives exactly their bid. The contract returns the rest — Rail takes no
+                The sender. The winner receives exactly their bid. The contract returns the rest. Rail takes no
                 cut of the spread.
               </dd>
             </div>

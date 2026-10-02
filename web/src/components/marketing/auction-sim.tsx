@@ -207,7 +207,7 @@ export function AuctionSim() {
               <p className="mt-1.5 text-body text-night-muted">
                 The sender’s limit was {dollarsFromCents(demo.limitCents)}, so{" "}
                 <span className="figure font-semibold text-night-text">{dollarsFromCents(changeCents)}</span> goes back to
-                the sender — not to Rail.
+                the sender, not to Rail.
               </p>
               {skipped.size > 0 && (
                 <p className="mt-2.5 flex items-start gap-2 text-small text-caution">
@@ -232,9 +232,9 @@ export function AuctionSim() {
             >
               {phase === "ready" && "Three providers are ready to bid on this transfer. Press run."}
               {phase === "commit" &&
-                "Commit — each provider locks in a price as a sealed fingerprint. Nobody can see anyone else’s."}
+                "Commit. Each provider locks in a price as a sealed fingerprint. Nobody can see anyone else’s."}
               {phase === "reveal" &&
-                "Reveal — prices open one by one. The lowest bid wins, but only if its provider has staked enough to cover it."}
+                "Reveal. Prices open one by one. The lowest bid wins, but only if its provider has staked enough to cover it."}
             </motion.p>
           )}
         </AnimatePresence>

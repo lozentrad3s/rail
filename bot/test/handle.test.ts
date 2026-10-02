@@ -96,7 +96,11 @@ describe("the conversation", () => {
   it("lists contacts with four digits and no more", async () => {
     reset();
     const reply = await replyTo(deps, WA_ID, "contacts");
-    assert.match(reply, /\*Mum\* — ADAEZE O\. OKONKWO, GTBank ····4567/);
+    // The wording may change; what must not is that only four digits ever appear.
+    assert.match(reply, /\*Mum\*/);
+    assert.match(reply, /ADAEZE O\. OKONKWO/);
+    assert.match(reply, /GTBank ····4567/);
+    assert.equal(/(?<!\d)\d{8,11}(?!\d)/.test(reply), false, "a full account number reached the chat");
   });
 
   it("offers to connect an account before quoting a balance", async () => {

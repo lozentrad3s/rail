@@ -14,13 +14,13 @@ type Outcome = "pays" | "defaults";
 
 const MOVES: Record<Outcome, { from: string; to: string; cents: number; note: string; tone: "money" | "slash" | "neutral" }[]> = {
   pays: [
-    { from: "Escrow", to: "Provider", cents: demo.winningBidCents, note: "Their bid — nothing more", tone: "neutral" },
+    { from: "Escrow", to: "Provider", cents: demo.winningBidCents, note: "Their bid, nothing more", tone: "neutral" },
     { from: "Escrow", to: "You", cents: change, note: "The rest of your limit", tone: "money" },
     { from: "Provider’s stake", to: "Provider", cents: collateral, note: "Released after delivery", tone: "neutral" },
   ],
   defaults: [
     { from: "Escrow", to: "You", cents: demo.limitCents, note: "Every cent back", tone: "money" },
-    { from: "Provider’s stake", to: "You", cents: collateral, note: "Slashed and paid to you — not to Rail", tone: "slash" },
+    { from: "Provider’s stake", to: "You", cents: collateral, note: "Slashed and paid to you, not to Rail", tone: "slash" },
   ],
 };
 
@@ -90,7 +90,7 @@ export function PayOrSlash() {
               <p className="mt-0.5 text-small text-ink-muted">
                 {pays
                   ? `The bank alert matches ${ngn(demo.localAmount)} and this transfer’s reference.`
-                  : "About ten minutes pass with no proof of payment. Anyone can trigger the refund — even if Rail is offline."}
+                  : "About ten minutes pass with no proof of payment. Anyone can trigger the refund, even if Rail is offline."}
               </p>
             </div>
           </div>

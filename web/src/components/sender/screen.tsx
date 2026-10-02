@@ -56,7 +56,7 @@ export function Assurance({ icon, children }: { icon: ReactNode; children: React
  */
 export function Notice({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
   return (
-    <div role="alert" className="mt-5 rounded-[18px] bg-surface p-4 shadow-card">
+    <div role="alert" className="clay mt-5 p-4">
       <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-slash-text">
         <span aria-hidden="true">{icon}</span>
         {title}

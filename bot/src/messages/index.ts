@@ -39,17 +39,17 @@ export const help = (): string =>
   [
     "Here is what I can do:",
     "",
-    "*send 50k to mum* — send money",
-    "*add mum* — add someone you send to",
-    "*contacts* — who you can send to",
-    "*balance* — what you have",
+    "*send 50k to mum* to send money",
+    "*add mum* to add someone new",
+    "*contacts* to see who you can send to",
+    "*balance* to see what you have",
     "",
     "Try: send 50k to mum",
   ].join("\n");
 
 export const welcome = (): string =>
   [
-    "Hi — I am Rail. I send money home.",
+    "Hi. I am Rail, and I send money home.",
     "",
     "Start by adding someone: *add mum*",
     "Then: *send 50k to mum*",
@@ -76,7 +76,7 @@ export const addNeedsName = (): string =>
  */
 export const accountNumberInChat = (): string =>
   [
-    "Please do not put account numbers in this chat — it is not a safe place for them.",
+    "Please do not put account numbers in this chat. It is not a safe place for them.",
     "",
     "Tell me who they are instead, like *add mum*, and I will send you a private place to enter the details.",
   ].join("\n");
@@ -93,7 +93,7 @@ export const contactList = (contacts: ContactLine[]): string => {
     "",
     ...shown.map(
       (contact, index) =>
-        `${index + 1}. *${safeName(contact.contactName)}* — ${safeName(contact.accountName)}, ${safeName(contact.bankName)} ····${contact.accountLast4}`,
+        `${index + 1}. *${safeName(contact.contactName)}* (${safeName(contact.accountName)}, ${safeName(contact.bankName)} ····${contact.accountLast4})`,
     ),
     ...(hidden > 0 ? ["", `…and ${hidden} more.`] : []),
     "",
@@ -164,7 +164,7 @@ export const balance = (units: bigint): string =>
 
 export const linkAccount = (url: string): string =>
   [
-    "Let us connect your account first — one tap with Face ID:",
+    "Let us connect your account first. One tap with Face ID:",
     url,
     "",
     "Then come back and say *balance*.",

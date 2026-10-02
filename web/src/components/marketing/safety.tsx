@@ -12,12 +12,12 @@ const GUARANTEES = [
   {
     icon: EyeOff,
     title: "Bank details stay private",
-    body: "Your family’s account number never goes on the public ledger — only a sealed fingerprint of it.",
+    body: "Your family’s account number never goes on the public ledger. Only a sealed fingerprint of it.",
   },
   {
     icon: Scale,
     title: "A record nobody can edit",
-    body: "Provider reputation is counted from what they actually delivered. There is no setting to change it — not even for us.",
+    body: "Provider reputation is counted from what they actually delivered. There is no setting to change it, not even for us.",
   },
 ];
 
@@ -32,7 +32,7 @@ export function Safety() {
               We never hold your money. <span className="accent-serif">Providers stake theirs.</span>
             </h2>
             <p className="mt-6 max-w-[34rem] text-lead text-ink-muted">
-              Rail doesn’t touch naira — it can’t. The winning provider pays from their own bank. Until the payment
+              Rail doesn’t touch naira. It can’t. The winning provider pays from their own bank. Until the payment
               is proven, your dollars stay locked in an open contract, with the provider’s stake locked beside them.
             </p>
             <p className="mt-4 max-w-[34rem] text-body text-ink-muted">
@@ -57,7 +57,7 @@ export function Safety() {
                 Apps that approve in the chat
               </p>
               <p className="mt-2 text-small text-night-muted">
-                If a PIN typed into the chat approves payments, whoever controls the chat can find or guess it — and
+                If a PIN typed into the chat approves payments, whoever controls the chat can find or guess it, and
                 send your money.
               </p>
             </div>

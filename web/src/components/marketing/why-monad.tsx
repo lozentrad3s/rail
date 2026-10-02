@@ -6,16 +6,16 @@ const STATS = [
   { value: "300ms", label: "Block time", note: "One tick of the auction" },
   { value: "600ms", label: "Finality", note: "A won bid is settled, not provisional" },
   { value: "~24s", label: "A full sealed auction", note: "30 commit blocks + 30 reveal blocks" },
-  { value: "≈0", label: "Fees", note: "Near-zero — so a $50 transfer is worth auctioning" },
+  { value: "≈0", label: "Fees", note: "Near-zero, so a $50 transfer is worth auctioning" },
 ];
 
 const STACK = [
-  "AUSD by Agora — native EIP-3009",
+  "AUSD by Agora, native EIP-3009",
   "Passkey accounts by Mera",
   "Gas paid by a relayer, never the sender",
   "Permissionless finalize & refund",
   "Commit–reveal auction · 110% collateral",
-  "Salted commitments — no PII on-chain",
+  "Salted commitments, no PII on-chain",
 ];
 
 export function WhyMonad() {
@@ -34,12 +34,12 @@ export function WhyMonad() {
             </h2>
             <p className="mt-6 max-w-[36rem] text-lead text-night-muted">
               Sealed-bid auctions are decades old. On a transparent ledger a bid is public the moment it lands in a
-              block, so it has to be committed first and revealed later — two rounds. On most chains that takes too
+              block, so it has to be committed first and revealed later, which makes two rounds. On most chains that takes too
               long, or costs too much, to sit inside a payment.
             </p>
             <p className="mt-4 max-w-[36rem] text-body text-night-muted">
-              On Monad a round is measured in blocks, not minutes. Our pilot runs 30 blocks each way — about half
-              a minute for both rounds and final settlement, at near-zero fees — and the windows are that wide to
+              On Monad a round is measured in blocks, not minutes. Our pilot runs 30 blocks each way, about half
+              a minute for both rounds and final settlement, at near-zero fees. The windows are that wide to
               give providers on ordinary connections room to compete, not because the chain needs it. And every
               sender is a new Monad account, created with Face ID by someone who has never used crypto.
             </p>
