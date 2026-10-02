@@ -20,7 +20,7 @@ export function Hero() {
 
           <h1 id="hero-title" className="mt-6 text-hero">
             Send money <span className="accent-serif text-accent-soft">home</span>,
-            <br className="hidden sm:block" /> straight from WhatsApp.
+            <br className="hidden sm:block" /> straight from a chat.
           </h1>
 
           <p className="mt-6 max-w-[34rem] text-lead text-night-muted">
@@ -36,6 +36,12 @@ export function Hero() {
               See how it works
             </ButtonLink>
           </div>
+
+          {site.whatsappComingSoon ? (
+            <p className="text-small mt-4 text-night-muted">
+              Live on Telegram today. WhatsApp is coming as soon as it is approved.
+            </p>
+          ) : null}
 
           <ul className="mt-12 grid gap-3 text-small text-night-muted">
             <li className="flex items-start gap-2.5">

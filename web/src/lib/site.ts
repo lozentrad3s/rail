@@ -1,24 +1,38 @@
 // Public site configuration. Links that don't exist yet resolve to null, and the UI renders an
 // honest "not yet" state instead of a dead link.
 
+/**
+ * Telegram is the live chat. WhatsApp is not.
+ *
+ * Meta's business verification is still outstanding, so the number answers nothing. A call to action
+ * pointing at it would be the one thing this file exists to prevent — a confident button that goes
+ * nowhere. Telegram needed no verification and works today, so it gets the button and WhatsApp is
+ * labelled for what it is.
+ */
+const telegramHandle = process.env.NEXT_PUBLIC_TELEGRAM_BOT?.replace(/^@/, "") || null;
+const telegramUrl = telegramHandle ? `https://t.me/${telegramHandle}` : null;
+
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") || null;
-const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("hi")}` : null;
+/** Kept only so the page can say "coming soon" about something specific, never as a link. */
+const whatsappComingSoon = whatsappNumber !== null;
+
 const pilotUrl = process.env.NEXT_PUBLIC_PILOT_URL || null;
 
 /**
  * The one thing we most want a visitor to do, in order of what exists:
- * the WhatsApp bot → the pilot sign-up → the auction simulation (always real, never a dead end).
+ * the Telegram bot → the pilot sign-up → the auction simulation (always real, never a dead end).
  */
-const primaryCta = whatsappUrl
-  ? { href: whatsappUrl, label: "Continue on WhatsApp", short: "Open WhatsApp", external: true }
+const primaryCta = telegramUrl
+  ? { href: telegramUrl, label: "Open Rail on Telegram", short: "Open Telegram", external: true }
   : pilotUrl
     ? { href: pilotUrl, label: "Join the pilot", short: "Join the pilot", external: true }
     : { href: "#auction", label: "Try the auction", short: "Try the auction", external: false };
 
 export const site = {
   name: "Rail",
-  tagline: "Send money home, straight from WhatsApp.",
-  whatsappUrl,
+  tagline: "Send money home, straight from a chat.",
+  telegramUrl,
+  whatsappComingSoon,
   pilotUrl,
   primaryCta,
   repoUrl: process.env.NEXT_PUBLIC_REPO_URL || null,

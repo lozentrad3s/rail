@@ -24,12 +24,12 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rail — Send money home, straight from WhatsApp",
+  title: "Rail — Send money home, straight from a chat",
   description:
     "Confirm with Face ID and your family's bank receives naira. Local providers compete in a sealed auction to deliver every transfer, and the saving comes back to you.",
   applicationName: "Rail",
   openGraph: {
-    title: "Rail — Send money home, straight from WhatsApp",
+    title: "Rail — Send money home, straight from a chat",
     description:
       "Providers compete in a sealed auction to deliver your transfer. Rail never touches your money.",
     type: "website",

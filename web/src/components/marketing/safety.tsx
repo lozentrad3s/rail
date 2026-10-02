@@ -49,7 +49,7 @@ export function Safety() {
           <div className="grid gap-4 rounded-card bg-night p-6 text-night-text sm:p-8 lg:grid-cols-[1fr_1fr_1fr] lg:gap-8">
             <div className="lg:col-span-1">
               <p className="text-label text-night-muted">The stolen-phone test</p>
-              <h3 className="mt-3 text-h3">Someone takes over your WhatsApp. What can they do?</h3>
+              <h3 className="mt-3 text-h3">Someone takes over your chat. What can they do?</h3>
             </div>
             <div className="rounded-[18px] bg-night-raised p-5">
               <p className="flex items-center gap-2 font-semibold">
