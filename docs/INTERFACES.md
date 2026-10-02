@@ -390,11 +390,31 @@ Loop per `OrderCreated`: filter by currency, max size and **attestor allowlist**
 `payout-details`, `pay`, `markPaid`. Config via env: `LP_PRIVATE_KEY`, `RPC_URL`, `RAIL_CORE`,
 `CURRENCIES`, `SPREAD_BPS`, `MAX_ORDER_AUSD`, `ATTESTOR_ALLOWLIST`, `RELAYER_URL`.
 
-### 5.4 `bot` — WhatsApp Cloud API
+### 5.4 `bot` — the chat front door
 
-- `GET /webhook` — Meta verification (`hub.verify_token`).
-- `POST /webhook` — reject unless `X-Hub-Signature-256` HMAC-SHA256 over the raw body with the app
-  secret verifies.
+One brain, two transports. `handle.ts`, `commands.ts`, `amounts.ts` and `messages/` know nothing
+about which chat they are speaking into; a transport's only jobs are to authenticate inbound
+traffic, hand over `(chatId, text)`, and deliver a string back.
+
+| Transport | Inbound | Authenticated by | Needs a public URL |
+|---|---|---|---|
+| **Telegram** (pilot) | long poll `getUpdates`, or webhook | the bot token itself; webhook adds `X-Telegram-Bot-Api-Secret-Token` | **No** when long polling |
+| WhatsApp Cloud API | webhook only | `X-Hub-Signature-256` HMAC-SHA256 over the raw body | Yes |
+
+Telegram is first because it needs no business verification and no public URL: long polling means
+the bot reaches out to Telegram rather than waiting to be called, so it runs anywhere. That is also
+why the pilot can be demonstrated before Meta approves anything.
+
+**`chatId` is opaque, and Telegram's is namespaced** — `tg:<telegram chat id>`. WhatsApp still sends
+a bare number, which is safe because prefixing one side is enough: `tg:7301…` can never equal
+`2349166358325`. Namespacing both would be tidier and is not a correctness requirement.
+
+The relayer's wire field is still spelled `waId` and carries whichever id the transport produced.
+The name is wrong now; renaming it across the relayer and its tests is tracked debt, deliberately
+not done days before a deadline for zero behaviour change.
+
+- `GET /webhook` — Meta verification (`hub.verify_token`), WhatsApp only.
+- `POST /webhook` — reject unless the transport's check above verifies.
 - Calls to 🔑bot relayer endpoints carry `Authorization: Bearer <BOT_API_KEY>`.
 - **Structured commands only** — no open-domain assistant (banned on the Business Platform since
   15 Jan 2026): `send <amount> to <contact>`, `add <contact>`, `contacts`, `balance`, `help`.
@@ -409,9 +429,10 @@ Loop per `OrderCreated`: filter by currency, max size and **attestor allowlist**
 - `balance` reads the linked account via `GET /v1/accounts`, reads its balance on-chain (read-only)
   and replies in dollars. An unlinked number gets an account link instead, never an error.
 
-**The link proves the passkey, not the phone.** `POST /v1/accounts/link` requires a signature from
-the account itself, so taking over a WhatsApp number cannot attach it to someone else's money, and
-the relayer never learns a private key.
+**The link proves the key, not the chat.** `POST /v1/accounts/link` requires a signature from the
+account itself, so taking over a WhatsApp number or a Telegram account cannot attach it to someone
+else's money, and the relayer never learns a private key. This is the property that makes it safe to
+add transports at all: a new chat surface adds a way to *propose*, never a way to spend.
 - Every user-visible string lives in `bot/src/messages` and passes the ban list in `CLAUDE.md`.
 - **Never** holds a key, calls `POST /v1/orders`, or signs anything.
 

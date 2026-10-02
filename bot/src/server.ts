@@ -4,11 +4,25 @@
  * Separate from `index.ts` so the whole front door can be driven in tests: a webhook handler that
  * can only be exercised by a live Meta app is a webhook handler nobody has attacked.
  */
+import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 
 import { replyTo, type Deps } from "./handle.ts";
 import { verifyChallenge, verifySignature } from "./signature.ts";
+import { readUpdates, TELEGRAM_MAX_BODY } from "./telegram.ts";
 import { readMessages } from "./whatsapp.ts";
+
+/**
+ * Constant-time comparison for Telegram's shared secret.
+ *
+ * A byte-by-byte early return leaks the secret to anyone willing to time a few thousand requests,
+ * and unlike an HMAC this value is all there is.
+ */
+function sameSecret(presented: string, configured: string): boolean {
+  const a = Buffer.from(presented);
+  const b = Buffer.from(configured);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 /** WhatsApp rejects a text body over 4096 characters, so a long reply must be cut, not sent. */
 export const MAX_BODY = 4096;
@@ -27,6 +41,14 @@ export type ServerOptions = {
   verifyToken: string;
   appSecret: string;
   log: (line: string) => void;
+  /**
+   * Present only when serving Telegram over a webhook instead of long polling.
+   *
+   * Telegram does not sign its deliveries; it echoes a secret of our choosing in a header. That is
+   * weaker than an HMAC — it cannot prove the body is unaltered — so the secret must be long and
+   * random, and it is the only thing standing between this endpoint and anyone on the internet.
+   */
+  telegram?: { secret: string };
 };
 
 export type BotServer = {
@@ -54,9 +76,15 @@ function rawBody(request: IncomingMessage): Promise<Buffer> {
   });
 }
 
-/** Cut to what WhatsApp will accept. A rejected message is worse than a shortened one. */
-export function fit(body: string): string {
-  return body.length <= MAX_BODY ? body : `${body.slice(0, MAX_BODY - 1)}…`;
+/**
+ * Cut to what the transport will accept. A rejected message is worse than a shortened one.
+ *
+ * WhatsApp and Telegram both happen to cap text at 4096, but the limit is passed in rather than
+ * assumed: the day one of them changes it, a silently rejected reply is a sender left waiting with
+ * no idea why.
+ */
+export function fit(body: string, limit = MAX_BODY): string {
+  return body.length <= limit ? body : `${body.slice(0, limit - 1)}…`;
 }
 
 export function createBotServer(options: ServerOptions): BotServer {
@@ -96,9 +124,60 @@ export function createBotServer(options: ServerOptions): BotServer {
     }
   }
 
+  /** Telegram's webhook path. Same conversation, same dedupe, different authentication. */
+  async function handleTelegramDelivery(payload: unknown): Promise<void> {
+    for (const update of readUpdates(payload)) {
+      // Telegram retries an unacknowledged update, so its id is the dedupe key.
+      if (!remember(`tg-${update.updateId}`)) continue;
+
+      try {
+        const reply = await replyTo(deps, update.chatId, update.text);
+        await whatsapp.sendText(update.chatId, fit(reply, TELEGRAM_MAX_BODY));
+      } catch (cause) {
+        log(`${new Date().toISOString()} delivery-failed update=${update.updateId} detail=${String(cause)}`);
+      }
+    }
+  }
+
   const server = createServer((request, response) => {
     void (async () => {
       const url = new URL(request.url ?? "/", "http://bot.local");
+
+      if (request.method === "POST" && url.pathname === "/telegram/webhook") {
+        const configured = options.telegram?.secret ?? "";
+        const presented = request.headers["x-telegram-bot-api-secret-token"];
+
+        // Fails closed with no secret configured: an open update endpoint is an open payments bot.
+        if (!configured || typeof presented !== "string" || !sameSecret(presented, configured)) {
+          log(`${new Date().toISOString()} webhook-rejected transport=telegram reason=secret`);
+          response.writeHead(401).end();
+          return;
+        }
+
+        let body: Buffer;
+        try {
+          body = await rawBody(request);
+        } catch {
+          response.writeHead(413).end();
+          return;
+        }
+
+        let payload: unknown;
+        try {
+          payload = JSON.parse(body.toString("utf8"));
+        } catch {
+          response.writeHead(400).end();
+          return;
+        }
+
+        // Acknowledged before the work, so Telegram does not retry and double-reply.
+        response.writeHead(200).end();
+
+        const work = handleTelegramDelivery(payload).finally(() => inFlight.delete(work));
+        inFlight.add(work);
+        await work;
+        return;
+      }
 
       if (request.method === "GET" && url.pathname === "/healthz") {
         response.writeHead(200, { "content-type": "application/json" }).end('{"ok":true}');

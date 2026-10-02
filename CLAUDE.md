@@ -18,14 +18,20 @@ Never invent a type, error, endpoint or event that the interface doc doesn't def
 1. **Rail never holds, moves, or touches fiat.** No contract, service, or bot may custody local
    currency or initiate a fiat payout on a user's behalf. LPs (including AZA as LP #0) pay out on
    their own accounts and licences. Any design where Rail custodies fiat is rejected.
-2. **WhatsApp proposes; the sender's own key authorises** — a passkey, or a wallet they connected.
+2. **Chat proposes; the sender's own key authorises** — a passkey, or a wallet they connected.
    Which of the two it is does not matter and never has: what matters is that the key is theirs and
    the bot has never held it. The bot never holds a signing key, never holds a
    session, and never submits anything that moves funds. It returns a deep link; the PWA signs.
-   The bot never asks for, accepts, or displays a full bank account number — Meta's policy forbids
-   requesting financial account numbers in chat. Account details are entered in the PWA via a
-   link; chat shows `····4471` only. The bot is a structured payments bot (commands and intents),
-   never a general-purpose AI assistant — those are banned on the WhatsApp Business Platform.
+   This holds on every transport. Telegram is the pilot chat because it needs no business
+   verification; WhatsApp follows. Neither is trusted more than the other, because neither is
+   trusted at all.
+   The bot never asks for, accepts, or displays a full bank account number. Meta's policy forbids
+   requesting financial account numbers in chat and Telegram's does not, but the reason that
+   outlives both is that a number pasted into a chat is in that chat's history forever and on
+   someone else's servers. Account details are entered in the PWA via a link; chat shows
+   `····4471` only. The bot is a structured payments bot (commands and intents), never a
+   general-purpose AI assistant — banned outright on the WhatsApp Business Platform, and the wrong
+   shape for payments anywhere.
 3. **No PII on-chain.** Bank details appear on-chain only as a salted `keccak256` commitment.
    Unsalted commitments are forbidden — a 10-digit NUBAN is brute-forceable in seconds.
 4. **`finalize`, `refund` and `claim` are permissionless.** No owner, pause, allowlist or backend
@@ -93,10 +99,13 @@ judged; a working pilot is. The rules that mattered survive the move.
 
 ## Sender UI (`web/`) and WhatsApp bot (`bot/`) — the ban list
 
-The sender never sees crypto vocabulary — in the PWA or in WhatsApp. Beyond UX, WhatsApp's commerce
-policy forbids promoting the buying, selling or trading of virtual currency, so a crypto word in a
-bot message is a ban risk for the number. This must return zero hits in sender-facing UI code and
-in every user-visible bot string:
+The sender never sees crypto vocabulary — in the PWA or in any chat. There were always two reasons.
+WhatsApp's commerce policy forbids promoting the buying, selling or trading of virtual currency, so
+a crypto word there is a ban risk for the number; Telegram has no such policy, so on the pilot
+transport that reason does not apply. **The rule does not relax, because the other reason was always
+the better one:** a person sending money to their mother is not shopping for a financial product,
+and vocabulary that makes them feel they are is a worse product. This must return zero hits in
+sender-facing UI code and in every user-visible bot string, whatever the transport:
 
 ```bash
 grep -rniE "wallet|gas|blockchain|crypto|seed phrase|mnemonic|web3|on-chain|onchain|token|stablecoin|usdt|usdc|ausd|\bMON\b|monad|metamask|tx hash|transaction hash|sign(ing)? (a )?message" "web/src/app/(sender)" web/src/components/sender bot/src/messages
@@ -114,9 +123,10 @@ a person to connect a thing you will not call anything. That surface is `web/src
 
 The exemption is narrow and these two limits are absolute:
 
-- **`bot/src/messages` is never exempt.** Meta's commerce policy is a ban risk for the number, and
-  no funding convenience is worth the number. The bot says "approve on your phone" and sends a
-  link; the word lives behind the link, never in the chat.
+- **`bot/src/messages` is never exempt, on any transport.** On WhatsApp it is a ban risk for the
+  number and no funding convenience is worth the number. On Telegram there is no such risk and the
+  rule still stands, because the chat is where someone decides whether Rail is for people like
+  them. The bot says "approve on your phone" and sends a link; the word lives behind the link.
 - **The passkey path stays.** Connect is the second door, for people who already have wallets, not
   a replacement. Somebody with no wallet and no crypto must still be able to send money, because
   that person is the entire point of Rail.
