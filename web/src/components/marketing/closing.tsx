@@ -20,8 +20,9 @@ export function Closing() {
             Money that gets <span className="accent-serif text-accent-soft">home</span>.
           </h2>
           <p className="mx-auto mt-6 max-w-[34rem] text-lead text-night-muted">
-            We’re opening a pilot from the UK and US to Nigeria, with real families and real providers. Ghana is
-            next.
+            The pilot runs from the UK and US to Nigeria, with real families and real providers. The auction
+            does not care where the money lands, so Ghana, Kenya, India and the Philippines come next, and a
+            business paying a supplier in Europe or Asia uses the same rails.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <ButtonLink href={site.primaryCta.href} tone="night" external={site.primaryCta.external}>

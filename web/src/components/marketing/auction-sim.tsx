@@ -215,6 +215,11 @@ export function AuctionSim() {
                   The lowest bid was skipped: its provider hadn’t staked enough to cover 110% of it.
                 </p>
               )}
+              {/* Every figure above is derived from this rate, so the rate shows its age. */}
+              <p className="mt-3 text-small text-night-muted">
+                Priced at {demo.rate.toLocaleString()} naira to the dollar, the market rate on{" "}
+                {demo.rateAsOf}. A live transfer is quoted at the rate when you send.
+              </p>
             </motion.div>
           ) : (
             <motion.p

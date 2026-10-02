@@ -129,6 +129,39 @@ Serif accents render ~8% larger than the surrounding sans to match x-height.
 - `prefers-reduced-transparency: reduce` → solid backgrounds, no blur.
 - `prefers-contrast: more` → solid backgrounds and a visible 1px border on every surface.
 
+### 5.1 Clay — the material everything that does not float is made of
+
+Glass is for layers that genuinely float over moving content, and nothing else. §10 lists glass on
+everything as a tell, and `backdrop-filter` is also the most expensive paint a phone GPU can be
+asked for: commit `685168c` bought back the mobile score by removing blurs, and that is not being
+spent again on decoration.
+
+So surfaces that sit *in* the page are clay: solid, soft, lit from one direction.
+
+```
+--clay-raise:  inset 0 1px 0 rgb(255 255 255 / .9),     /* light catching the top edge */
+               0 1px 2px rgb(14 9 28 / .05),
+               0 10px 28px -12px rgb(14 9 28 / .14);
+--clay-press:  inset 0 2px 5px rgb(14 9 28 / .10),      /* the same surface, pushed in */
+               inset 0 1px 0 rgb(255 255 255 / .35);
+--clay-night:  inset 0 1px 0 rgb(255 255 255 / .07),
+               0 1px 2px rgb(0 0 0 / .32),
+               0 14px 34px -14px rgb(0 0 0 / .55);
+```
+
+Rules, because clay goes wrong in one direction only:
+
+- **Restraint is the whole thing.** Low-contrast shadow, one inner highlight on the top edge,
+  nothing on the bottom. Chunky symmetrical double shadows are the toy version and read as a
+  Dribbble shot, which is the same failure as glass-on-everything wearing a different hat.
+- **One step of elevation per surface.** Clay on clay flattens for the same reason glass on glass
+  does: the second highlight has nothing to catch.
+- **Pressed is a state, not a style.** `--clay-press` belongs on something being touched right now,
+  and arrives within 120ms of pointer-down (§6).
+- **Radius does the softness**, not the shadow: `--radius-card` and up. A tight radius with a soft
+  shadow looks like a mistake.
+- `prefers-contrast: more` → drop the shadows, keep a 1px border. The depth was never the message.
+
 ---
 
 ## 6 · Motion

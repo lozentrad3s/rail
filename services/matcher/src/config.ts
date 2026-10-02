@@ -23,7 +23,12 @@ export type Config = {
   lpRegistry: Address;
   /** Currencies this provider can actually deliver, as ISO codes. */
   currencies: string[];
-  /** Local-currency units per dollar, e.g. 1534 NGN. */
+  /**
+   * Local-currency units per dollar: this provider's own cost of the currency, not a market feed.
+   *
+   * A provider who leaves it stale bids below their cost and loses money on every win, which is how
+   * 1,534 against a market of 1,328 would have quietly cost about $4.40 per transfer.
+   */
   rate: bigint;
   /** The provider's margin, in basis points, added to the reference rate. */
   spreadBps: bigint;
@@ -84,7 +89,7 @@ export function loadConfig(env = process.env): Config {
       .split(",")
       .map((c) => c.trim().toUpperCase())
       .filter(Boolean),
-    rate: bigNumber("RATE", 1_534n),
+    rate: bigNumber("RATE", 1_328n),
     spreadBps,
     maxOrderAusd: bigNumber("MAX_ORDER_AUSD", 500_000_000n),
     attestorAllowlist: (optional("ATTESTOR_ALLOWLIST") ?? "")

@@ -39,6 +39,30 @@ export const site = {
   pilotLabel: "Pilot · October 2026",
 } as const;
 
+/**
+ * Where money can go.
+ *
+ * The pilot corridor is the only one with providers recruited, so it is the only one marked live.
+ * Everything else is listed because the mechanism does not care about the destination: a provider
+ * who holds the local currency and a bank account can bid on any corridor, which is the point of a
+ * permissionless auction. Listing them is a roadmap, not a claim, and the UI must label them so.
+ */
+export const corridors = [
+  { to: "Nigeria", currency: "NGN", region: "Africa", live: true },
+  { to: "Ghana", currency: "GHS", region: "Africa", live: false },
+  { to: "Kenya", currency: "KES", region: "Africa", live: false },
+  { to: "South Africa", currency: "ZAR", region: "Africa", live: false },
+  { to: "India", currency: "INR", region: "Asia", live: false },
+  { to: "Philippines", currency: "PHP", region: "Asia", live: false },
+  { to: "Pakistan", currency: "PKR", region: "Asia", live: false },
+  { to: "Eurozone", currency: "EUR", region: "Europe", live: false },
+  { to: "United Kingdom", currency: "GBP", region: "Europe", live: false },
+  { to: "Brazil", currency: "BRL", region: "Americas", live: false },
+] as const;
+
+export const liveCorridors = corridors.filter((corridor) => corridor.live);
+export const plannedCorridors = corridors.filter((corridor) => !corridor.live);
+
 /** Illustrative figures used across the page. Kept in one place so every chapter agrees. */
 export const demo = {
   localAmount: 50_000,
@@ -46,9 +70,18 @@ export const demo = {
   accountLast4: "4471",
   recipientName: "ADAEZE O. OKONKWO",
   recipientFirstName: "Adaeze",
-  rate: 1_534,
-  limitCents: 3_360,
-  winningBidCents: 3_261,
+  /**
+   * The market rate, with the date it was true.
+   *
+   * Every other figure here is derived from it, so they move together. It sat at 1,534 long after
+   * the market was at 1,328, which quoted a ceiling no provider could fill — a number with no date
+   * is a number nobody notices going stale.
+   */
+  rate: 1_328,
+  rateAsOf: "2 October 2026",
+  rateSource: "https://open.er-api.com/v6/latest/USD",
+  limitCents: 3_840,
+  winningBidCents: 3_822,
   feeCents: 13,
   collateralBps: 11_000,
   deliveredSeconds: 41,

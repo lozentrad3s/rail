@@ -11,8 +11,15 @@ export type Config = {
   attestor: Address;
   /** Signs and pays for submissions. Holds MON for gas and nothing else. */
   relayerKey: Hex;
-  /** Local-currency units per dollar, used until there are settled orders to price from. */
+  /**
+   * Local-currency units per dollar, used only when the FX feed cannot be reached.
+   *
+   * Dated on purpose: 1,328 NGN was the rate on 2 Oct 2026. A fallback with no date is how the
+   * previous value sat at 1,534 long enough to make every quote unfillable.
+   */
   fallbackRate: bigint;
+  /** Where the live rate comes from. */
+  fxUrl: string;
   /** How far above the indicative price the sender's reserve sits. */
   reserveBufferBps: bigint;
   /** What the relayer charges for submitting, in AUSD units. May be 0. */
@@ -73,7 +80,8 @@ export function loadConfig(): Config {
     ausd: address("AUSD_ADDRESS"),
     attestor: address("RAIL_ATTESTOR"),
     relayerKey: relayerKey as Hex,
-    fallbackRate: bigNumber("FALLBACK_RATE", 1_534n),
+    fallbackRate: bigNumber("FALLBACK_RATE", 1_328n),
+    fxUrl: optional("FX_URL") ?? "https://open.er-api.com/v6/latest/USD",
     reserveBufferBps: bigNumber("RESERVE_BUFFER_BPS", 200n),
     feeAusd: bigNumber("FEE_AUSD", 130_000n),
     quoteTtlSeconds: Number(bigNumber("QUOTE_TTL_SECONDS", 120n)),

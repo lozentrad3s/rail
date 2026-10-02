@@ -15,7 +15,7 @@ export function Hero() {
         <div className="max-w-[42rem]">
           <Eyebrow tone="night">
             <span className="size-1.5 rounded-full bg-signal" />
-            {site.pilotLabel} · UK &amp; US → Nigeria
+            {site.pilotLabel} · UK &amp; US → Nigeria · more corridors next
           </Eyebrow>
 
           <h1 id="hero-title" className="mt-6 text-hero">

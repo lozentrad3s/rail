@@ -17,6 +17,7 @@ import { loadConfig } from "./config.ts";
 import { createContactLink, listContacts, saveContact } from "./contacts.ts";
 import { createDraft, readDraft } from "./drafts.ts";
 import { RelayerError } from "./errors.ts";
+import { assertSaneFallback, currentRate } from "./fx.ts";
 import { Router } from "./http.ts";
 import { SubmissionQueue } from "./nonce.ts";
 import { createOrder, payoutDetails, readOrder, type OrderDeps } from "./orders.ts";
@@ -27,6 +28,7 @@ import { currencyToBytes3 } from "./rail.ts";
 import { Vault } from "./vault.ts";
 
 const config = loadConfig();
+assertSaneFallback(config.fallbackRate);
 const account = privateKeyToAccount(config.relayerKey);
 
 // A call with no deadline can wedge a request handler against a rate-limited node.
@@ -189,11 +191,16 @@ const router = new Router({ allowedOrigins: config.allowedOrigins })
     }
     if (localAmount <= 0n) throw new RelayerError("BAD_REQUEST", "localAmount must be positive.");
 
+    // Live, because a stale rate quotes a ceiling no provider can fill and the order just refunds.
+    const { rate, source } = await currentRate(
+      { url: config.fxUrl, fallback: config.fallbackRate },
+      currency,
+    );
+
     const quote = priceTransfer({
       currency,
       localAmountMinor: localAmount,
-      // Until there are settled orders to price from, the configured rate stands in.
-      rate: config.fallbackRate,
+      rate,
       reserveBufferBps: config.reserveBufferBps,
       feeAusd: config.feeAusd,
       ttlSeconds: config.quoteTtlSeconds,
@@ -201,6 +208,7 @@ const router = new Router({ allowedOrigins: config.allowedOrigins })
 
     return {
       ...quote,
+      rateSource: source,
       currencyBytes3: currencyToBytes3(currency),
       relayer: account.address,
       attestor: config.attestor,

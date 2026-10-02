@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowDownLeft, CircleAlert, Plus, RefreshCw, Send } from "lucide-react";
 import { Notice, Screen } from "./screen";
+import { AddMoney } from "./add-money";
+import { Dashboard } from "./dashboard";
 import { cn, usd } from "@/lib/format";
 import { spring } from "@/lib/motion";
 import { isPractice, readBalance } from "@/lib/account/chain";
@@ -157,19 +159,9 @@ export function AccountScreen() {
           <Action icon={<Plus className="size-[19px]" strokeWidth={2} />} label="Add money" />
           <Action icon={<ArrowDownLeft className="size-[19px]" strokeWidth={2} />} label="Request" />
         </div>
-        <p className="text-small mt-3 text-ink-muted">
-          Sending opens with the pilot in October. You can set up your account today.
-        </p>
+        <Dashboard address={address} />
 
-        <section className="mt-9">
-          <h2 className="text-label text-ink-muted">Transfers</h2>
-          <div className="mt-3 rounded-[18px] border border-dashed border-line px-4 py-7 text-center">
-            <p className="text-small text-ink-muted">
-              Nothing yet. Every transfer you make will show here, with what it cost and how long it
-              took.
-            </p>
-          </div>
-        </section>
+        {address ? <AddMoney address={address} /> : null}
 
         <div className="mt-auto pt-10">
           <button
