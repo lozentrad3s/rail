@@ -10,7 +10,9 @@ const LINKS = [
   { href: "#auction", label: "The auction" },
   { href: "#safety", label: "Safety" },
   { href: "#why-monad", label: "Why Monad" },
-  { href: "#providers", label: "Providers" },
+  // A real page, not an anchor: somebody who wants to supply naira should not have to read a
+  // chapter about it first.
+  { href: "/provider", label: "For providers" },
 ];
 
 /** Floating glass bar. Its material follows whichever chapter is passing underneath it. */
@@ -66,13 +68,28 @@ export function Nav() {
           ))}
         </ul>
 
-        <a
-          href={site.primaryCta.href}
-          className="btn btn-sm btn-primary"
-          {...(site.primaryCta.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-        >
-          {site.primaryCta.short}
-        </a>
+        <div className="flex items-center gap-1.5">
+          {/*
+           * The way into the app itself. /account sends anyone without an account to /start, so one
+           * link serves both the returning sender and the first-time one.
+           */}
+          <a
+            href="/account"
+            className={cn(
+              "text-small rounded-lg px-3 py-2 transition-colors duration-150",
+              night ? "text-night-muted hover:text-night-text" : "text-ink-muted hover:text-ink",
+            )}
+          >
+            Open app
+          </a>
+          <a
+            href={site.primaryCta.href}
+            className="btn btn-sm btn-primary"
+            {...(site.primaryCta.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+          >
+            {site.primaryCta.short}
+          </a>
+        </div>
       </nav>
     </header>
   );

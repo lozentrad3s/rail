@@ -105,6 +105,19 @@ export function StartScreen() {
           >
             {busy === "restore" ? "Look at your phone…" : "I already have an account"}
           </button>
+
+          {/*
+           * The other door. Somebody who already keeps dollars somewhere has nothing to set up and
+           * nothing to top up, and without this they land here with no way through.
+           */}
+          <button
+            type="button"
+            onClick={() => router.push("/connect")}
+            disabled={busy !== null}
+            className="btn btn-secondary-paper w-full"
+          >
+            Use an account I already have
+          </button>
         </div>
 
         <AnimatePresence>

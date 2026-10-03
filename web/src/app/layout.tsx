@@ -29,6 +29,7 @@ export const metadata: Metadata = {
     "Confirm with Face ID and your family's bank receives naira. Local providers compete in a sealed auction to deliver every transfer, and the saving comes back to you.",
   applicationName: "Rail",
   openGraph: {
+    images: [{ url: "/railpay-logo.jpg", width: 1250, height: 1250, alt: "Rail-Pay" }],
     title: "Rail: send money home, straight from a chat",
     description:
       "Providers compete in a sealed auction to deliver your transfer. Rail never touches your money.",
