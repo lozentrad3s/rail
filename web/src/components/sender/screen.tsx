@@ -26,7 +26,7 @@ export function Screen({
     >
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <RailMark className="size-7" />
+          <RailMark className="size-7" tone="paper" />
           <span className="text-[1.0625rem] font-semibold tracking-[-0.02em]">Rail</span>
         </div>
         {action}

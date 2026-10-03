@@ -48,8 +48,10 @@ export function Nav() {
         )}
       >
         <a href="#top" className="press flex items-center gap-2.5 rounded-lg pr-2" aria-label="Rail, back to top">
-          <RailMark className="size-7" />
-          <span className="text-[1.0625rem] font-semibold tracking-[-0.02em]">Rail</span>
+          <RailMark className="size-7" tone={night ? "night" : "paper"} />
+          <span className="text-[1.0625rem] font-semibold tracking-[-0.02em]">
+            Rail<span className="text-accent">-Pay</span>
+          </span>
         </a>
 
         <ul className="hidden items-center gap-0.5 lg:flex">
