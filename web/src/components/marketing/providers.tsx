@@ -1,5 +1,4 @@
 import { Banknote, Gavel, Landmark, ShieldCheck } from "lucide-react";
-import { site } from "@/lib/site";
 import { ButtonLink, Chapter, Container, Eyebrow } from "./primitives";
 import { Reveal } from "./reveal";
 
@@ -24,8 +23,9 @@ export function Providers() {
             sheet, no permission needed. Just stake, and a bank account you already use.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
-            <ButtonLink href={site.pilotUrl} tone="paper" disabledLabel="Provider sign-up opens October 2026">
-              Register interest
+            {/* A real page now, not a waiting list: staking is permissionless, so nothing gates it. */}
+            <ButtonLink href="/provider" tone="paper">
+              Start providing
             </ButtonLink>
           </div>
         </Reveal>

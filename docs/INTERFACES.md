@@ -454,7 +454,7 @@ Design: `docs/DESIGN.md`.
 | `/l/[code]` | sender | Connect a WhatsApp number to this account — signs `"Rail link\ntoken: …\naddress: …"` and posts it to `POST /v1/accounts/link` (§5.1) |
 | `/o/[orderId]` | sender | Live status |
 | `/r/[orderId]` | recipient | "I received ₦X" one tap (L1) |
-| `/lp` | LP | Privy/Dynamic login, stake, live orders, earnings, reputation |
+| `/provider` | LP | Connect a wallet, stake, see live requests, bid, collect the account number, mark paid. Route group `(provider)`, exempt from the ban list: a provider arrived with a wallet |
 | `/explorer` | public | Auctions, clearing rates, settlement times (from indexer) |
 
 The route segment is `[code]`, not `[token]`, while the wire field stays `token`: `token` is on the
