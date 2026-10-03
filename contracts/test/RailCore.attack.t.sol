@@ -499,6 +499,99 @@ contract RailCoreAttackTest is Base {
         vm.stopPrank();
     }
 
+
+    /*//////////////////////////////////////////////////////////////
+                    A SLOW BANK IS NOT A DEFAULT
+    //////////////////////////////////////////////////////////////*/
+
+    /// An honest provider paid, the bank was slow, and the sender disputes before it lands.
+    function test_disputeDoesNotSlashAProviderTheAttestorVouchesFor() public {
+        SwitchableAttestor bank = new SwitchableAttestor();
+        OrderIntent memory intent = defaultIntent();
+        intent.attestor = address(bank);
+        bytes32 orderId = awardedOrderWith(intent, 32e6);
+
+        vm.prank(lpOne);
+        core.markPaid(orderId);
+
+        // The sender sees nothing in the account yet and objects, which is reasonable of them.
+        vm.prank(sender);
+        core.dispute(orderId, "");
+        assertEq(uint8(core.getOrder(orderId).status), uint8(Status.Disputed));
+
+        // The transfer lands late and the attestor confirms it. Evidence must beat the clock.
+        bank.set(true);
+
+        uint256 lockedBefore = lockedOf(lpOne);
+        uint256 paidBefore = ausd.balanceOf(lpOne);
+        core.finalize(orderId);
+
+        assertEq(uint8(core.getOrder(orderId).status), uint8(Status.Settled));
+        assertEq(ausd.balanceOf(lpOne) - paidBefore, 32e6, "the provider who paid is paid its bid");
+        assertLt(lockedOf(lpOne), lockedBefore, "and its collateral is released, not slashed");
+    }
+
+    /// Once the attestor has vouched, nobody can force a refund out of the provider's stake.
+    function test_refundImpossibleAfterAttestationEvenInDispute() public {
+        SwitchableAttestor bank = new SwitchableAttestor();
+        OrderIntent memory intent = defaultIntent();
+        intent.attestor = address(bank);
+        bytes32 orderId = awardedOrderWith(intent, 32e6);
+
+        vm.prank(lpOne);
+        core.markPaid(orderId);
+        vm.prank(sender);
+        core.dispute(orderId, "");
+
+        bank.set(true);
+
+        vm.roll(block.number + RESOLUTION_BLOCKS + 1);
+        vm.expectRevert(IRailCore.Attested.selector);
+        core.refund(orderId);
+    }
+
+    /**
+     * The window a provider is judged in must be longer than a bank takes to settle.
+     *
+     * With no attestation, a dispute that outlives the resolution window slashes the provider. This
+     * documents that the protocol relies on the attestor to tell a slow payment from a missing one,
+     * and that the resolution window is the provider's entire margin for error.
+     */
+    function test_withoutEvidenceADisputeSlashesTheProvider() public {
+        bytes32 orderId = awardedOrder(32e6);
+
+        vm.prank(lpOne);
+        core.markPaid(orderId);
+        vm.prank(sender);
+        core.dispute(orderId, "");
+
+        // Nobody attests. The resolution window runs out.
+        vm.roll(block.number + RESOLUTION_BLOCKS + 1);
+
+        uint256 senderBefore = ausd.balanceOf(sender);
+        core.refund(orderId);
+
+        assertEq(uint8(core.getOrder(orderId).status), uint8(Status.Refunded));
+        assertGt(
+            ausd.balanceOf(sender) - senderBefore,
+            defaultIntent().maxAusd,
+            "the sender gets their escrow back plus the slashed collateral"
+        );
+    }
+
+    /// A sender cannot dispute after the window closes, so a settled payout stays settled.
+    function test_disputeTooLateIsRefused() public {
+        bytes32 orderId = awardedOrder(32e6);
+
+        vm.prank(lpOne);
+        core.markPaid(orderId);
+        vm.roll(block.number + DISPUTE_BLOCKS + 1);
+
+        vm.prank(sender);
+        vm.expectRevert(IRailCore.DeadlinePassed.selector);
+        core.dispute(orderId, "");
+    }
+
     /*//////////////////////////////////////////////////////////////
                                HELPERS
     //////////////////////////////////////////////////////////////*/
