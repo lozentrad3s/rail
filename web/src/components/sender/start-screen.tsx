@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CircleAlert, Landmark, ScanFace, ShieldCheck, Sparkles } from "lucide-react";
 import { Assurance, Notice, Screen } from "./screen";
+import { unlockKind, unlockName, unlockPhrase, unlockWaiting } from "@/lib/unlock";
 import { spring } from "@/lib/motion";
 import {
   AccountError,
@@ -37,6 +38,10 @@ const FAILURES: Record<AccountFailureReason, { title: string; detail: string }> 
 
 export function StartScreen() {
   const router = useRouter();
+  // Read after mount: the server cannot know what device is asking, and guessing then correcting
+  // is worse than being general for one paint.
+  const [kind, setKind] = useState<ReturnType<typeof unlockKind>>("generic");
+  useEffect(() => setKind(unlockKind()), []);
   const reduce = useReducedMotion();
   const [busy, setBusy] = useState<"create" | "restore" | null>(null);
   const [failure, setFailure] = useState<AccountFailureReason | null>(null);
@@ -93,7 +98,7 @@ export function StartScreen() {
             className="btn btn-primary w-full text-[1rem]"
           >
             <ScanFace className="size-[19px]" strokeWidth={2.2} aria-hidden="true" />
-            {busy === "create" ? "Look at your phone…" : "Set up with Face ID"}
+            {busy === "create" ? unlockWaiting(kind) : `Set up with ${unlockName(kind)}`}
           </button>
 
           <button
@@ -103,7 +108,7 @@ export function StartScreen() {
             aria-disabled={busy !== null}
             className="btn btn-secondary-paper w-full"
           >
-            {busy === "restore" ? "Look at your phone…" : "I already have an account"}
+            {busy === "restore" ? unlockWaiting(kind) : "I already have an account"}
           </button>
 
           {/*
@@ -137,7 +142,7 @@ export function StartScreen() {
 
         <ul className="text-small mt-11 grid gap-3.5 text-ink-muted">
           <Assurance icon={<ShieldCheck className="size-[18px]" strokeWidth={2} />}>
-            Only your face approves a transfer. Not us, and not anyone holding your phone.
+            Only {unlockPhrase(kind)} approves a transfer. Not us, and not anyone holding your phone.
           </Assurance>
           <Assurance icon={<Landmark className="size-[18px]" strokeWidth={2} />}>
             Your family needs nothing but their normal bank account.

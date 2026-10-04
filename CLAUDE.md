@@ -140,6 +140,17 @@ number we don't have.
 
 - The Mera passkey `rpId` is the production domain from day one. Never create passkeys on a preview
   or `vercel.app` domain — accounts bind permanently to their `rpId`.
+
+  **Pilot exception, 4 Oct 2026.** The rule above exists so that real users with real money cannot
+  be stranded on a domain we abandon. On the testnet pilot there is no real money and no real user:
+  balances are faucet AUSD and every account is a test account. Refusing to mint passkeys on
+  `rail-pay.vercel.app` meant nobody could open an account at all, judges included, which is a
+  worse failure than the one the rule prevents.
+
+  So `NEXT_PUBLIC_PASSKEY_RP_ID` is set to the pilot host, and **this reverses the day a custom
+  domain is attached**: accounts created under the pilot `rpId` will not work on the new one and
+  their holders must create fresh accounts. That is acceptable for faucet money and is not
+  acceptable for anyone's savings, so mainnet gets its domain before its first passkey.
 - Four taps for a send: amount+recipient → quote → Face ID → done.
 
 ## Git

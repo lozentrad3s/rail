@@ -10,6 +10,7 @@ import { spring } from "@/lib/motion";
 import { ApiError } from "@/lib/rail-api";
 import { approveProposal, loadProposal, type Proposal } from "@/lib/transfer";
 import { preferredSigner, signerFailure, type SignerKind } from "@/lib/account/signer";
+import { unlockKind, unlockName, unlockWaiting } from "@/lib/unlock";
 
 type Failure = { title: string; detail: string };
 
@@ -66,8 +67,12 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
   const [failure, setFailure] = useState<Failure | null>(null);
   // Which key this device can sign with. Read after mount: the server has no idea.
   const [signer, setSigner] = useState<SignerKind | null | undefined>(undefined);
+  const [kind, setKind] = useState<ReturnType<typeof unlockKind>>("generic");
 
-  useEffect(() => setSigner(preferredSigner() ?? null), []);
+  useEffect(() => {
+    setSigner(preferredSigner() ?? null);
+    setKind(unlockKind());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,7 +118,7 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
             className="btn btn-primary mt-9 w-full"
           >
             <ScanFace className="size-[19px]" strokeWidth={2.2} aria-hidden="true" />
-            Set up with Face ID
+            Set up with {unlockName(kind)}
           </button>
           <button
             type="button"
@@ -217,8 +222,8 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
                   ? "Waiting for your approval…"
                   : "Approve to send"
                 : busy
-                  ? "Look at your phone…"
-                  : "Approve with Face ID"}
+                  ? unlockWaiting(kind)
+                  : `Approve with ${unlockName(kind)}`}
             </button>
 
             <ul className="text-small mt-9 grid gap-3.5 text-ink-muted">

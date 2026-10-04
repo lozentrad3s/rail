@@ -71,6 +71,22 @@ function requireString(value: unknown, field: string): string {
 }
 
 const router = new Router({ allowedOrigins: config.allowedOrigins })
+  /**
+   * Something sensible for a person who opens this URL in a browser.
+   *
+   * It used to answer `{"error":{"code":"NOT_FOUND"}}`, which is correct for an API and reads as
+   * broken to anyone who was handed the link. The service is not the product, so it says where the
+   * product is.
+   */
+  .get("/", async () => ({
+    service: "rail-relayer",
+    ok: true,
+    app: "https://rail-pay.vercel.app",
+    chat: "https://t.me/RailpayBot",
+    note: "This is Rail's relayer API. It quotes transfers and submits the orders senders sign. It never holds anyone's money, and settlement does not depend on it: finalize and refund are permissionless.",
+    endpoints: ["GET /healthz", "GET /v1/quote", "GET /v1/banks", "POST /v1/orders", "GET /v1/orders/:orderId"],
+  }))
+
   .get("/healthz", async () => ({ ok: true }))
 
   .get("/v1/banks", async ({ query }) => {
