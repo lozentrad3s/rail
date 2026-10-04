@@ -19,6 +19,20 @@ const whatsappComingSoon = whatsappNumber !== null;
 const pilotUrl = process.env.NEXT_PUBLIC_PILOT_URL || null;
 
 /**
+ * Where this deployment lives, for absolute URLs in link previews.
+ *
+ * A share card's image has to be absolute: a relative path resolves against whatever opened it,
+ * which for Telegram and WhatsApp is their own servers, and the preview comes back blank. Vercel
+ * supplies the deployment host, so a preview build previews itself rather than production.
+ */
+export const origin = new URL(
+  process.env.NEXT_PUBLIC_SITE_ORIGIN ||
+    (process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : "https://rail-pay.vercel.app"),
+);
+
+/**
  * The one thing we most want a visitor to do, in order of what exists:
  * the Telegram bot → the pilot sign-up → the auction simulation (always real, never a dead end).
  */

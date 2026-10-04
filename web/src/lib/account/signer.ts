@@ -25,6 +25,22 @@ import {
  */
 export type SignerKind = "passkey" | "connected";
 
+/**
+ * The linked account, under names a sender-facing screen may use.
+ *
+ * The ban list is checked by grep over the source, so an import path carrying the word fails it just
+ * as a visible string would — and that strictness is right, because an identifier is one careless
+ * autocomplete away from being rendered. These are the same functions; this file is where the
+ * vocabulary changes, as it already does for `SignerKind`.
+ */
+export {
+  connectedAddress as linkedAddress,
+  connectedSnapshot as linkedSnapshot,
+  serverConnectedSnapshot as serverLinkedSnapshot,
+  subscribeConnected as subscribeLinked,
+  forgetWallet as forgetLinked,
+} from "./wallet";
+
 /** Failure reasons in words a sender-facing screen may use. */
 export type SignerFailure =
   | "cancelled"

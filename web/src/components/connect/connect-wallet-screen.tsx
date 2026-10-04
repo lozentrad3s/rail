@@ -1,19 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, CircleAlert, Coins, ShieldCheck, Wallet } from "lucide-react";
 import type { Address } from "viem";
 
 import { Assurance, Notice, Screen } from "@/components/sender/screen";
+import { WalletPicker } from "@/components/connect/wallet-picker";
 import { usd } from "@/lib/format";
 import { spring } from "@/lib/motion";
 import { readBalance } from "@/lib/account/chain";
 import {
-  connectWallet,
   forgetWallet,
-  hasWallet,
   resumeWallet,
   WalletError,
   type WalletFailure,
@@ -59,13 +58,10 @@ export function ConnectWalletScreen() {
 
   const [address, setAddress] = useState<Address | null>(null);
   const [dollars, setDollars] = useState<number | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [available, setAvailable] = useState<boolean | null>(null);
   const [failure, setFailure] = useState<WalletFailure | null>(null);
 
   // Reconnect without prompting if this browser already granted access.
   useEffect(() => {
-    setAvailable(hasWallet());
     void resumeWallet().then((wallet) => {
       if (wallet) setAddress(wallet.address);
     });
@@ -86,19 +82,6 @@ export function ConnectWalletScreen() {
       cancelled = true;
     };
   }, [address]);
-
-  const connect = useCallback(async () => {
-    setBusy(true);
-    setFailure(null);
-    try {
-      const wallet = await connectWallet();
-      setAddress(wallet.address);
-    } catch (error) {
-      setFailure(error instanceof WalletError ? error.reason : "unknown");
-    } finally {
-      setBusy(false);
-    }
-  }, []);
 
   const disconnect = () => {
     forgetWallet();
@@ -175,16 +158,19 @@ export function ConnectWalletScreen() {
                 needs.
               </p>
 
-              <button
-                type="button"
-                onClick={() => void connect()}
-                disabled={busy || available === false}
-                aria-disabled={busy || available === false}
-                className="btn btn-primary mt-9 w-full text-[1rem]"
-              >
-                <Wallet className="size-[19px]" strokeWidth={2.2} aria-hidden="true" />
-                {busy ? "Check your wallet…" : "Connect wallet"}
-              </button>
+              <div className="mt-9">
+                <WalletPicker
+                  busy={false}
+                  label="Connect wallet"
+                  onConnected={(wallet) => {
+                    setFailure(null);
+                    setAddress(wallet.address);
+                  }}
+                  onError={(error) =>
+                    setFailure(error instanceof WalletError ? error.reason : "unknown")
+                  }
+                />
+              </div>
 
               <button
                 type="button"

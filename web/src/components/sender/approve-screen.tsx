@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/rail-api";
 import { approveProposal, loadProposal, type Proposal } from "@/lib/transfer";
 import { preferredSigner, signerFailure, type SignerKind } from "@/lib/account/signer";
 import { unlockKind, unlockName, unlockWaiting } from "@/lib/unlock";
+import { useDeviceFact } from "@/lib/use-device-fact";
 
 type Failure = { title: string; detail: string };
 
@@ -65,14 +66,12 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
   const [reference, setReference] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
-  // Which key this device can sign with. Read after mount: the server has no idea.
-  const [signer, setSigner] = useState<SignerKind | null | undefined>(undefined);
-  const [kind, setKind] = useState<ReturnType<typeof unlockKind>>("generic");
-
-  useEffect(() => {
-    setSigner(preferredSigner() ?? null);
-    setKind(unlockKind());
-  }, []);
+  // Which key this device can sign with, and what to call unlocking it. The server knows neither.
+  const signer = useDeviceFact<SignerKind | null | undefined>(
+    () => preferredSigner() ?? null,
+    undefined,
+  );
+  const kind = useDeviceFact(unlockKind, "generic");
 
   useEffect(() => {
     let cancelled = false;

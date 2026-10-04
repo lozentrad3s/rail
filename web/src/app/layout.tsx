@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Instrument_Serif, Roboto_Mono } from "next/font/google";
 import "./globals.css";
+import { origin } from "@/lib/site";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,6 +25,7 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: origin,
   title: "Rail: send money home, straight from a chat",
   description:
     "Confirm with Face ID and your family's bank receives naira. Local providers compete in a sealed auction to deliver every transfer, and the saving comes back to you.",

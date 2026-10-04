@@ -11,6 +11,13 @@ import { cn, usd } from "@/lib/format";
 import { spring } from "@/lib/motion";
 import { isPractice, readBalance } from "@/lib/account/chain";
 import {
+  forgetLinked,
+  linkedAddress,
+  linkedSnapshot,
+  serverLinkedSnapshot,
+  subscribeLinked,
+} from "@/lib/account/signer";
+import {
   accountSnapshot,
   forgetAccount,
   parseAccount,
@@ -19,11 +26,22 @@ import {
   subscribeAccount,
 } from "@/lib/account/passkey";
 
+/**
+ * The dashboard, for either kind of account.
+ *
+ * Two doors lead here: a Rail account made with Face ID, and an account the person already kept
+ * elsewhere and linked on the connect surface. Both land on the same screen because from here on
+ * they are the same thing — an address holding dollars that only its owner can move.
+ *
+ * It used to read the passkey store alone, which sent everyone who came through the second door
+ * straight back to sign-up. What differs between the two is small and marked below: a linked account
+ * has no second derived key, so there is no savings pocket, and there is nothing to top up because
+ * its dollars are already where they live.
+ */
 export function AccountScreen() {
   const router = useRouter();
   const raw = useSyncExternalStore(subscribeAccount, accountSnapshot, serverAccountSnapshot);
   const account = useMemo(() => parseAccount(raw), [raw]);
-  const address = account?.address;
   const reduce = useReducedMotion();
 
   const [dollars, setDollars] = useState<number | null>(null);
@@ -32,11 +50,26 @@ export function AccountScreen() {
   const [reading, setReading] = useState(false);
   const [reload, setReload] = useState(0);
   const [confirmForget, setConfirmForget] = useState(false);
+
+  const linked = useSyncExternalStore(
+    subscribeLinked,
+    linkedSnapshot,
+    serverLinkedSnapshot,
+  );
+
+  const address = account?.address ?? linked ?? undefined;
   const savingsAddress = account?.savingsAddress;
 
+  /**
+   * Sign-up is for people with no account, not for people mid-hydration.
+   *
+   * Both stores report the server's null until hydration finishes, so this reads them directly at
+   * effect time instead of trusting the rendered snapshot. Trusting it sends somebody who has an
+   * account straight back to sign-up for a frame.
+   */
   useEffect(() => {
-    if (raw === null) router.replace("/start");
-  }, [raw, router]);
+    if (accountSnapshot() === null && linkedAddress() === null) router.replace("/start");
+  }, [raw, linked, router]);
 
   // Read on arrival, on request, and whenever the person returns to the tab — money may have landed.
   useEffect(() => {
@@ -74,7 +107,7 @@ export function AccountScreen() {
     };
   }, [address, savingsAddress, reload]);
 
-  if (!account) return null;
+  if (!address) return null;
 
   return (
     <Screen>
@@ -117,8 +150,9 @@ export function AccountScreen() {
             </motion.p>
 
             <p className="text-small mt-3 max-w-[20rem] text-night-muted">
-              Held in dollars. Nobody can move it without your face. Not us, and not anyone holding your
-              phone.
+              {account
+                ? "Held in dollars. Nobody can move it without your face. Not us, and not anyone holding your phone."
+                : "Held in dollars, in the account you already had. Rail cannot move any of it: each transfer asks you to approve exactly what it costs."}
             </p>
           </div>
         </section>
@@ -129,7 +163,13 @@ export function AccountScreen() {
           </Notice>
         ) : null}
 
-        {/* One passkey, two accounts. The second costs no extra prompt and no extra passkey. */}
+        {/*
+         * One passkey, two accounts. The second costs no extra prompt and no extra passkey.
+         *
+         * A linked account has no second key to derive, so there is nothing honest to show here and
+         * the row is left out rather than offered and broken.
+         */}
+        {account ? (
         <section className="clay mt-3 flex items-center justify-between gap-3 px-5 py-4">
           <div className="min-w-0">
             <p className="text-label text-ink-muted">Savings</p>
@@ -153,6 +193,7 @@ export function AccountScreen() {
             </button>
           )}
         </section>
+        ) : null}
 
         <div className="mt-5 grid grid-cols-3 gap-2.5">
           <Action icon={<Send className="size-[19px]" strokeWidth={2} />} label="Send" />
@@ -161,7 +202,8 @@ export function AccountScreen() {
         </div>
         <Dashboard address={address} />
 
-        {address ? <AddMoney address={address} /> : null}
+        {/* Topping up is for a Rail account. A linked one already holds its dollars where they are. */}
+        {account ? <AddMoney address={address} /> : null}
 
         <div className="mt-auto pt-10">
           <button
@@ -171,7 +213,11 @@ export function AccountScreen() {
                 setConfirmForget(true);
                 return;
               }
-              forgetAccount();
+              if (account) forgetAccount();
+              else {
+                forgetLinked();
+                router.replace("/start");
+              }
             }}
             className="text-small press rounded-lg py-1 text-ink-muted underline decoration-line underline-offset-4"
           >
@@ -179,7 +225,9 @@ export function AccountScreen() {
           </button>
           {confirmForget ? (
             <p className="text-small mt-2 text-ink-muted">
-              Your money stays where it is. Face ID brings the account back on any phone.
+              {account
+                ? "Your money stays where it is. Face ID brings the account back on any phone."
+                : "Your money stays where it is. This only forgets it on this phone, and you can link it again."}
             </p>
           ) : null}
         </div>

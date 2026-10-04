@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CircleAlert, Landmark, ScanFace, ShieldCheck, Sparkles } from "lucide-react";
 import { Assurance, Notice, Screen } from "./screen";
 import { unlockKind, unlockName, unlockPhrase, unlockWaiting } from "@/lib/unlock";
+import { useDeviceFact } from "@/lib/use-device-fact";
 import { spring } from "@/lib/motion";
 import {
   AccountError,
@@ -38,10 +39,9 @@ const FAILURES: Record<AccountFailureReason, { title: string; detail: string }> 
 
 export function StartScreen() {
   const router = useRouter();
-  // Read after mount: the server cannot know what device is asking, and guessing then correcting
-  // is worse than being general for one paint.
-  const [kind, setKind] = useState<ReturnType<typeof unlockKind>>("generic");
-  useEffect(() => setKind(unlockKind()), []);
+  // Read after hydration: the server cannot know what device is asking, and guessing then
+  // correcting is worse than being general for one paint.
+  const kind = useDeviceFact(unlockKind, "generic");
   const reduce = useReducedMotion();
   const [busy, setBusy] = useState<"create" | "restore" | null>(null);
   const [failure, setFailure] = useState<AccountFailureReason | null>(null);

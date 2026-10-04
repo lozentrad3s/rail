@@ -31,7 +31,8 @@ import {
   rememberBid,
   type Request,
 } from "@/lib/provider/requests";
-import { connectWallet, resumeWallet, walletClientFor, WalletError } from "@/lib/account/wallet";
+import { resumeWallet, walletClientFor, WalletError } from "@/lib/account/wallet";
+import { WalletPicker } from "@/components/connect/wallet-picker";
 
 /**
  * The provider's page.
@@ -128,13 +129,6 @@ export function ProviderScreen() {
       setBusy(null);
     }
   };
-
-  const connect = () =>
-    run("connect", async () => {
-      const wallet = await connectWallet();
-      setLp(wallet.address);
-      await refresh(wallet.address);
-    });
 
   const doStake = () =>
     run("stake", async () => {
@@ -274,15 +268,23 @@ export function ProviderScreen() {
               </dd>
             </div>
           </dl>
-          <button
-            type="button"
-            onClick={() => void connect()}
-            disabled={busy !== null}
-            className="btn btn-primary clay-press mt-9 w-full text-[1rem]"
-          >
-            <Wallet className="size-[19px]" strokeWidth={2.2} aria-hidden="true" />
-            {busy === "connect" ? "Check your wallet…" : "Connect wallet"}
-          </button>
+          <div className="mt-9">
+            <WalletPicker
+              busy={busy !== null}
+              label="Connect wallet"
+              className="btn btn-primary clay-press w-full text-[1rem]"
+              onConnected={(wallet) => {
+                setProblem(null);
+                setLp(wallet.address);
+                void refresh(wallet.address);
+              }}
+              onError={(error) =>
+                setProblem(
+                  error instanceof WalletError ? error.message : "That wallet could not be connected.",
+                )
+              }
+            />
+          </div>
 
           <ul className="text-small mt-11 grid gap-3.5 text-ink-muted">
             <Assurance icon={<ShieldCheck className="size-[18px]" strokeWidth={2} />}>

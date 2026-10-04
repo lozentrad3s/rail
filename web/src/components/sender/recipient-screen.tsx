@@ -65,13 +65,39 @@ export function RecipientScreen({ code }: { code: string }) {
   const [banks, setBanks] = useState<Bank[] | null>(null);
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
-  const [accountName, setAccountName] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<SavedContact | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
 
+  /**
+   * The lookup's outcome, kept with the digits it belongs to.
+   *
+   * The name is the one check standing between a sender and paying a stranger: they read it and
+   * decide it is their mother. Holding the name on its own meant clearing it by hand every time the
+   * digits changed, and a single missed clear shows a name beside an account it was never looked up
+   * for. Storing the answer next to its question makes that impossible rather than merely unlikely,
+   * and everything below falls out of it: whether a lookup is in flight is just "no answer for what
+   * is typed now".
+   */
+  type Lookup = { bankCode: string; accountNumber: string } & (
+    | { name: string; failure?: never }
+    | { name?: never; failure: Failure }
+  );
+  const [lookup, setLookup] = useState<Lookup | null>(null);
+
   const complete = bankCode !== "" && accountNumber.length === ACCOUNT_DIGITS;
+  const answer =
+    lookup && lookup.bankCode === bankCode && lookup.accountNumber === accountNumber ? lookup : null;
+  const accountName = answer?.name ?? null;
+  const checking = complete && answer === null;
+
+  /**
+   * One notice, from whichever of the three went wrong.
+   *
+   * The lookup's own failure expires when the digits change, because it was about those digits. A
+   * bank-list or save failure was not, so it stays until something clears it.
+   */
+  const shown = failure ?? answer?.failure ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -93,23 +119,19 @@ export function RecipientScreen({ code }: { code: string }) {
   // The name is looked up as soon as there is enough to look one up, so the sender never has to
   // press a button to find out they mistyped.
   useEffect(() => {
-    setAccountName(null);
     if (!complete) return;
 
     let cancelled = false;
-    setChecking(true);
-    setFailure(null);
 
     const timer = setTimeout(() => {
       resolveAccountName({ bankCode, accountNumber })
         .then(({ accountName: name }) => {
-          if (!cancelled) setAccountName(name);
+          if (!cancelled) setLookup({ bankCode, accountNumber, name });
         })
         .catch((error: unknown) => {
-          if (!cancelled) setFailure(FAILURES[reasonOf(error)] ?? UNKNOWN);
-        })
-        .finally(() => {
-          if (!cancelled) setChecking(false);
+          if (!cancelled) {
+            setLookup({ bankCode, accountNumber, failure: FAILURES[reasonOf(error)] ?? UNKNOWN });
+          }
         });
     }, 350);
 
@@ -252,7 +274,7 @@ export function RecipientScreen({ code }: { code: string }) {
         </button>
 
         <AnimatePresence>
-          {failure ? (
+          {shown ? (
             <motion.div
               initial={reduce ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -261,9 +283,9 @@ export function RecipientScreen({ code }: { code: string }) {
             >
               <Notice
                 icon={<CircleAlert className="size-4" strokeWidth={2.2} />}
-                title={failure.title}
+                title={shown.title}
               >
-                {failure.detail}
+                {shown.detail}
               </Notice>
             </motion.div>
           ) : null}
