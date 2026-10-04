@@ -19,7 +19,28 @@ export type Deps = {
   /** Read-only. The bot has no key and cannot spend what it reads. */
   readBalance: (address: Address) => Promise<bigint>;
   currency: string;
+  /** Where the app lives, for the links the bot hands out in `fund` and `about`. */
+  appBaseUrl?: string;
   log?: (line: string) => void;
+};
+
+/**
+ * The one question the bot is allowed to be waiting on.
+ *
+ * Only `remove` destroys anything, so it is the only command that asks before acting. The pending
+ * question lives in memory and is dropped on restart, which is the safe direction: a forgotten
+ * question means a stray "yes" does nothing, where a remembered one could delete a recipient the
+ * person has since stopped thinking about.
+ */
+type Pending = { contactId: string; contactName: string; askedAt: number };
+const PENDING_TTL_MS = 5 * 60 * 1000;
+const pending = new Map<string, Pending>();
+
+const takePending = (chatId: string): Pending | undefined => {
+  const question = pending.get(chatId);
+  pending.delete(chatId);
+  if (!question) return undefined;
+  return Date.now() - question.askedAt < PENDING_TTL_MS ? question : undefined;
 };
 
 /** People type "mum", "Mum", "mummy". Exact match wins, then a unique prefix. */
@@ -42,6 +63,55 @@ export async function replyTo(deps: Deps, waId: string, text: string): Promise<s
 
       case "help":
         return messages.help();
+
+      case "about":
+        return messages.about(deps.appBaseUrl ?? "https://rail-pay.vercel.app");
+
+      case "fund":
+        return messages.howToFund(`${deps.appBaseUrl ?? "https://rail-pay.vercel.app"}/account`);
+
+      case "rate": {
+        // One dollar's worth, taken from the same quote a real transfer is priced from.
+        const quote = await deps.relayer.quote(deps.currency, 100_000n);
+        const perDollar =
+          BigInt(quote.indicativeAusd) > 0n
+            ? (100_000n * 1_000_000n) / (100n * BigInt(quote.indicativeAusd))
+            : 0n;
+        return messages.rateToday({
+          localPerDollar: perDollar,
+          currency: deps.currency,
+          live: quote.rateSource !== "fallback",
+        });
+      }
+
+      case "remove": {
+        if (!command.contactName) return messages.addNeedsName();
+        const contacts = await deps.relayer.contacts(waId);
+        const contact = findContact(contacts, command.contactName);
+        if (!contact) {
+          return contacts.length
+            ? messages.unknownContact(command.contactName)
+            : messages.noContacts();
+        }
+        pending.set(waId, {
+          contactId: contact.contactId,
+          contactName: contact.contactName,
+          askedAt: Date.now(),
+        });
+        return messages.confirmRemove(contact.contactName);
+      }
+
+      case "confirm": {
+        const question = takePending(waId);
+        if (!question) return messages.nothingToConfirm();
+        await deps.relayer.forgetContact(waId, question.contactId);
+        return messages.removed(question.contactName);
+      }
+
+      case "decline": {
+        const question = takePending(waId);
+        return question ? messages.keptContact(question.contactName) : messages.nothingToConfirm();
+      }
 
       case "account-number":
         // The digits are not stored, not echoed, and not looked up. They stop here.

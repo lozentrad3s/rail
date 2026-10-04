@@ -498,3 +498,29 @@
   white-space: nowrap;
   border: 0;
 }
+
+/**
+ * A value that is being read, not a value that is missing.
+ *
+ * Literal "..." in a figure reads as something that failed. A shaped block the size of the number
+ * it will become reads as loading, and keeps the layout still, which the CLS budget needs.
+ */
+@utility skeleton {
+  display: inline-block;
+  min-width: 4ch;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgb(14 9 28 / 0.06), rgb(14 9 28 / 0.11), rgb(14 9 28 / 0.06));
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+  color: transparent;
+  user-select: none;
+}
+
+@keyframes skeleton-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}

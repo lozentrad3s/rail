@@ -37,6 +37,7 @@ const deps: Deps = {
       args: [address],
     }),
   currency: config.currency,
+  appBaseUrl: process.env.APP_BASE_URL ?? "https://rail-pay.vercel.app",
   log,
 };
 

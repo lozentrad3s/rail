@@ -42,10 +42,64 @@ export const help = (): string =>
     "*send 50k to mum* to send money",
     "*add mum* to add someone new",
     "*contacts* to see who you can send to",
+    "*remove mum* to forget someone",
     "*balance* to see what you have",
+    "*rate* to see today's rate",
+    "*fund* to put money in",
+    "*about* to learn how this works",
     "",
     "Try: send 50k to mum",
   ].join("\n");
+
+/** Today's rate, with where it came from. A number with no source is a number nobody can check. */
+export const rateToday = (input: {
+  localPerDollar: bigint;
+  currency: string;
+  live: boolean;
+}): string =>
+  [
+    `One dollar is about ${input.localPerDollar.toLocaleString()} ${input.currency.toLowerCase() === "ngn" ? "naira" : input.currency} today.`,
+    "",
+    input.live
+      ? "That is the market rate right now. Providers bid against it, and the best price wins."
+      : "That is our last known rate. The live one is used when you actually send.",
+    "",
+    "Try: send 50k to mum",
+  ].join("\n");
+
+export const howToFund = (url: string): string =>
+  [
+    "Two ways to put money in:",
+    "",
+    "1. Open your account and copy your address, then send dollars to it.",
+    "2. Or connect an account you already have, and nothing needs topping up at all.",
+    "",
+    url,
+    "",
+    "Either way, only you can spend it.",
+  ].join("\n");
+
+export const about = (url: string): string =>
+  [
+    "*Rail* sends money home.",
+    "",
+    "You say how much and who to. Local providers compete to deliver it, and the cheapest wins, so you keep the difference. They pay from their own bank account, so your family just receives a normal transfer.",
+    "",
+    "This chat can only ever suggest a payment. Approving it happens on your phone, with your face. If somebody took over this chat tomorrow they could not move a penny.",
+    "",
+    url,
+  ].join("\n");
+
+export const confirmRemove = (name: string): string =>
+  [`Remove *${safeName(name)}*?`, "", "Reply *yes* to remove them, or *no* to keep them."].join("\n");
+
+export const removed = (name: string): string =>
+  [`${safeName(name)} is removed.`, "", "Say *contacts* to see who is left."].join("\n");
+
+export const nothingToConfirm = (): string =>
+  "There is nothing waiting for a yes or no. Say *help* to see what I can do.";
+
+export const keptContact = (name: string): string => `Fine, ${safeName(name)} stays.`;
 
 export const welcome = (): string =>
   [

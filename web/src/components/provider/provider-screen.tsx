@@ -106,7 +106,7 @@ export function ProviderScreen() {
   // Requests expire in blocks, so the list is stale within seconds of arriving.
   useEffect(() => {
     if (!lp) return;
-    const timer = setInterval(() => void refresh(lp), 6_000);
+    const timer = setInterval(() => void refresh(lp), 3_000);
     return () => clearInterval(timer);
   }, [lp, refresh]);
 
@@ -263,7 +263,7 @@ export function ProviderScreen() {
             className="btn btn-primary clay-press mt-9 w-full text-[1rem]"
           >
             <Wallet className="size-[19px]" strokeWidth={2.2} aria-hidden="true" />
-            {busy === "connect" ? "Check your wallet..." : "Connect wallet"}
+            {busy === "connect" ? "Check your wallet…" : "Connect wallet"}
           </button>
 
           <ul className="text-small mt-11 grid gap-3.5 text-ink-muted">
@@ -305,12 +305,12 @@ export function ProviderScreen() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-label text-ink-muted">Staked</p>
-              <p className="figure mt-1 text-h3 tabular-nums">{standing ? usd(standing.staked) : "..."}</p>
+              <p className="figure mt-1 text-h3 tabular-nums">{standing ? usd(standing.staked) : <span className="skeleton" aria-label="Loading">$0.00</span>}</p>
             </div>
             <div>
               <p className="text-label text-ink-muted">Free to bid with</p>
               <p className="figure mt-1 text-h3 tabular-nums text-accent">
-                {standing ? usd(standing.free) : "..."}
+                {standing ? usd(standing.free) : <span className="skeleton" aria-label="Loading">$0.00</span>}
               </p>
             </div>
           </div>
@@ -340,7 +340,7 @@ export function ProviderScreen() {
               disabled={busy !== null}
               className="btn btn-secondary-paper clay-press h-11"
             >
-              {busy === "stake" ? "Staking..." : "Stake"}
+              {busy === "stake" ? "Staking…" : "Stake"}
             </button>
           </div>
 
@@ -437,7 +437,7 @@ export function ProviderScreen() {
                         disabled={busy !== null || !storageWorks || !standing?.eligible}
                         className="btn btn-primary clay-press h-11"
                       >
-                        {committing ? "Sealing..." : "Bid"}
+                        {committing ? "Sealing…" : "Bid"}
                       </button>
                     </div>
                   ) : null}
@@ -453,7 +453,7 @@ export function ProviderScreen() {
                         disabled={busy !== null || request.phase !== "reveal"}
                         className="btn btn-primary clay-press h-11"
                       >
-                        {revealing ? "Revealing..." : request.phase === "reveal" ? "Reveal" : "Waiting for reveal"}
+                        {revealing ? "Revealing…" : request.phase === "reveal" ? "Reveal" : "Waiting for reveal"}
                       </button>
                     </div>
                   ) : null}
@@ -493,7 +493,7 @@ export function ProviderScreen() {
                               disabled={busy !== null}
                               className="btn btn-primary clay-press"
                             >
-                              {busy === `paid:${request.orderId}` ? "Confirming..." : "I have paid"}
+                              {busy === `paid:${request.orderId}` ? "Confirming…" : "I have paid"}
                             </button>
                           </div>
                           <p className="text-small mt-3 text-ink-muted">
@@ -508,7 +508,7 @@ export function ProviderScreen() {
                           disabled={busy !== null}
                           className="btn btn-primary clay-press"
                         >
-                          {busy === `details:${request.orderId}` ? "Checking..." : "Show the account to pay"}
+                          {busy === `details:${request.orderId}` ? "Checking…" : "Show the account to pay"}
                         </button>
                       )}
                     </div>

@@ -24,9 +24,10 @@ type Stub = {
   contacts: typeof CONTACT[];
   account: { address: Address } | undefined;
   fail: boolean;
+  forgotten: string[];
 };
 
-const stub: Stub = { contacts: [CONTACT], account: undefined, fail: false };
+const stub: Stub = { contacts: [CONTACT], account: undefined, fail: false, forgotten: [] };
 
 let server: Server;
 let deps: Deps;
@@ -42,6 +43,10 @@ before(async () => {
     if (stub.fail) return json(500, { error: { code: "INTERNAL", message: "the vault is on fire" } });
 
     if (url.pathname === "/v1/contacts") return json(200, stub.contacts);
+    if (url.pathname === "/v1/contacts/forget") {
+      stub.forgotten.push(url.searchParams.get("x") ?? "called");
+      return json(200, { forgotten: true });
+    }
     if (url.pathname === "/v1/contact-links") return json(200, { url: "https://rail.example/k/abc" });
     if (url.pathname === "/v1/account-links") return json(200, { url: "https://rail.example/l/def" });
     if (url.pathname === "/v1/drafts") return json(200, { draftId: "d1", url: "https://rail.example/c/ghi" });
@@ -73,6 +78,7 @@ const reset = () => {
   stub.contacts = [CONTACT];
   stub.account = undefined;
   stub.fail = false;
+  stub.forgotten = [];
 };
 
 describe("the conversation", () => {
@@ -184,5 +190,69 @@ describe("what the bot must never do", () => {
     reset();
     const offline = { ...deps, relayer: new RelayerClient("http://127.0.0.1:1", "k"), log: () => {} };
     assert.match(await replyTo(offline, WA_ID, "contacts"), /Something went wrong on my side/);
+  });
+});
+
+describe("removing a recipient", () => {
+  // The only destructive command, so it is the only one that asks first.
+  it("asks before it removes anything", async () => {
+    reset();
+    const reply = await replyTo(deps, WA_ID, "remove mum");
+    assert.ok(reply.includes("Remove *Mum*?"), reply);
+    assert.deepEqual(stub.forgotten, [], "nothing was removed by the question itself");
+  });
+
+  it("removes only after a yes", async () => {
+    reset();
+    await replyTo(deps, WA_ID, "remove mum");
+    const reply = await replyTo(deps, WA_ID, "yes");
+    assert.match(reply, /Mum is removed/);
+    assert.equal(stub.forgotten.length, 1);
+  });
+
+  it("keeps them on a no", async () => {
+    reset();
+    await replyTo(deps, WA_ID, "remove mum");
+    const reply = await replyTo(deps, WA_ID, "no");
+    assert.match(reply, /Mum stays/);
+    assert.deepEqual(stub.forgotten, []);
+  });
+
+  // A stray "yes" with no question pending must never delete the last thing discussed.
+  it("does nothing for a yes out of nowhere", async () => {
+    reset();
+    const reply = await replyTo(deps, WA_ID, "yes");
+    assert.match(reply, /nothing waiting for a yes or no/);
+    assert.deepEqual(stub.forgotten, []);
+  });
+
+  // One confirmation, one removal: a second yes must not remove somebody else.
+  it("will not reuse a confirmation", async () => {
+    reset();
+    await replyTo(deps, WA_ID, "remove mum");
+    await replyTo(deps, WA_ID, "yes");
+    const again = await replyTo(deps, WA_ID, "yes");
+    assert.match(again, /nothing waiting/);
+    assert.equal(stub.forgotten.length, 1, "the second yes removed nothing");
+  });
+
+  it("says who it does not know", async () => {
+    reset();
+    assert.match(await replyTo(deps, WA_ID, "remove granny"), /do not have anyone called/);
+  });
+});
+
+describe("the read-only commands", () => {
+  it("explains what Rail is without naming the machinery", async () => {
+    reset();
+    const reply = await replyTo(deps, WA_ID, "about");
+    assert.match(reply, /sends money home/i);
+    assert.equal(/wallet|crypto|blockchain/i.test(reply), false);
+  });
+
+  it("tells somebody how to put money in", async () => {
+    reset();
+    const reply = await replyTo(deps, WA_ID, "fund");
+    assert.ok(reply.includes("https://"), "it should hand over a link");
   });
 });

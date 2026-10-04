@@ -20,6 +20,8 @@ export type Quote = {
   indicativeAusd: string;
   maxAusd: string;
   expiresAt: number;
+  /** "live" when the FX feed answered, "fallback" when it did not. */
+  rateSource?: string;
 };
 
 export class RelayerUnavailable extends Error {
@@ -99,6 +101,10 @@ export class RelayerClient {
       `/v1/quote?currency=${encodeURIComponent(currency)}&localAmount=${localAmount.toString()}`,
       { bot: false },
     );
+  }
+
+  forgetContact(waId: string, contactId: string): Promise<{ forgotten: boolean }> {
+    return this.#call("/v1/contacts/forget", { method: "POST", body: { waId, contactId } });
   }
 
   accountLink(waId: string): Promise<{ url: string }> {

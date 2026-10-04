@@ -14,7 +14,7 @@ import { monadTestnet } from "viem/chains";
 
 import { createAccountLink, getLinkedAccount, linkAccount } from "./accounts.ts";
 import { loadConfig } from "./config.ts";
-import { createContactLink, listContacts, saveContact } from "./contacts.ts";
+import { createContactLink, forgetContact, listContacts, saveContact } from "./contacts.ts";
 import { createDraft, readDraft } from "./drafts.ts";
 import { RelayerError } from "./errors.ts";
 import { assertSaneFallback, currentRate } from "./fx.ts";
@@ -138,6 +138,17 @@ const router = new Router({ allowedOrigins: config.allowedOrigins })
   .get("/v1/contacts", async ({ query, request }) => {
     requireBot(request);
     return listContacts(vault, requireString(query.get("waId"), "waId"));
+  })
+
+  // Scoped to the chat that owns the contact: the key is derived from the chat id.
+  .post("/v1/contacts/forget", async ({ body, request }) => {
+    requireBot(request);
+    const input = (body ?? {}) as Record<string, unknown>;
+    return forgetContact(
+      vault,
+      requireString(input.waId, "waId"),
+      requireString(input.contactId, "contactId"),
+    );
   })
 
   // A number is bound to an account only by a signature from that account.

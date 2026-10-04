@@ -69,3 +69,37 @@ describe("account numbers pasted into chat", () => {
     assert.equal(command.kind, "send");
   });
 });
+
+describe("the rest of the commands", () => {
+  it("reads the read-only ones", () => {
+    assert.deepEqual(parseCommand("rate"), { kind: "rate" });
+    assert.deepEqual(parseCommand("PRICE"), { kind: "rate" });
+    assert.deepEqual(parseCommand("fund"), { kind: "fund" });
+    assert.deepEqual(parseCommand("deposit"), { kind: "fund" });
+    assert.deepEqual(parseCommand("about"), { kind: "about" });
+    assert.deepEqual(parseCommand("support"), { kind: "about" });
+  });
+
+  it("reads remove, and its synonyms", () => {
+    assert.deepEqual(parseCommand("remove mum"), { kind: "remove", contactName: "mum" });
+    assert.deepEqual(parseCommand("forget mum"), { kind: "remove", contactName: "mum" });
+    assert.deepEqual(parseCommand("delete mum"), { kind: "remove", contactName: "mum" });
+  });
+
+  it("asks who, when remove has no name", () => {
+    assert.deepEqual(parseCommand("remove"), { kind: "remove", contactName: "" });
+  });
+
+  // "removed" and "forgetting" are words, not commands.
+  it("does not read a word starting with remove as a command", () => {
+    assert.deepEqual(parseCommand("removed"), { kind: "help" });
+    assert.deepEqual(parseCommand("forgetting"), { kind: "help" });
+  });
+
+  it("reads yes and no", () => {
+    assert.deepEqual(parseCommand("yes"), { kind: "confirm" });
+    assert.deepEqual(parseCommand("Y"), { kind: "confirm" });
+    assert.deepEqual(parseCommand("no"), { kind: "decline" });
+    assert.deepEqual(parseCommand("cancel"), { kind: "decline" });
+  });
+});

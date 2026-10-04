@@ -324,6 +324,7 @@ protects the 🔑bot endpoints; their shared secret is, because CORS only binds 
 | `POST /v1/contact-links` 🔑bot | `{ waId, contactName }` | `{ url }` — `url = https://<domain>/k/<token>`, single use, expires in 15 min |
 | `POST /v1/contacts` | `{ token, currency, bankCode, accountNumber }` | Resolves the name via Paystack, stores the contact against the link's `waId`. Returns `{ contactId, contactName, accountName, bankName, accountLast4 }` |
 | `GET /v1/contacts?waId=` 🔑bot | — | `[{ contactId, contactName, accountName, bankName, accountLast4 }]` — **never the full number** |
+| `POST /v1/contacts/forget` 🔑bot | `{ waId, contactId }` | Deletes that recipient. Scoped to the chat that owns it, so one chat cannot forget another's. Returns `{ forgotten: true }` |
 | `POST /v1/drafts` 🔑bot | `{ waId, contactId, currency, localAmount }` | `{ draftId, url }` — `url = https://<domain>/c/<draftId>`. 128-bit random id, expires in 15 min |
 | `GET /v1/drafts/:draftId` | — | `{ currency, localAmount, recipient: { bankCode, bankName, accountNumber, accountName } }` — the full number is shown only inside the PWA |
 | `POST /v1/orders` | `{ intent, authorization, recipient: { bankCode, accountNumber, accountName, salt } }` | `{ orderId, txHash }` |
@@ -417,8 +418,22 @@ not done days before a deadline for zero behaviour change.
 - `POST /webhook` — reject unless the transport's check above verifies.
 - Calls to 🔑bot relayer endpoints carry `Authorization: Bearer <BOT_API_KEY>`.
 - **Structured commands only** — no open-domain assistant (banned on the Business Platform since
-  15 Jan 2026): `send <amount> to <contact>`, `add <contact>`, `contacts`, `balance`, `help`.
-  Amounts accept `50k`, `50,000`, `₦50000`. Anything else → `help`.
+  15 Jan 2026). Amounts accept `50k`, `50,000`, `₦50000`. Anything else → `help`.
+
+| Command | Does |
+|---|---|
+| `send <amount> to <contact>` | Builds a draft and returns the approval link |
+| `add <contact>` | Returns a one-time link for entering their bank details |
+| `contacts` | Who this chat can send to, last four digits only |
+| `remove <contact>` | Forgets a recipient. Confirmed before it happens |
+| `balance` | Reads the linked account on-chain, in dollars |
+| `rate` | What a dollar is worth in local currency today, and where the number came from |
+| `fund` | How to put money in: the account address, or a connected wallet |
+| `about` | What Rail is, in three lines, with the link to the app |
+| `help` | Every command above |
+
+  `remove` is the only destructive one, so it asks first and acts on the reply. Everything else is
+  read-only or produces a link that still needs a signature.
 - `add <contact>` calls `POST /v1/contact-links` and replies with the link. **The bot never asks for,
   accepts, or echoes a full account number.** If a user pastes anything that looks like an
   account number, the bot doesn't store it and doesn't echo it back; it replies with how to add

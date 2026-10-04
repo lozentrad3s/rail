@@ -125,3 +125,17 @@ export function getContact(vault: Vault, waId: string, contactId: string): Conta
   if (!contact) throw new RelayerError("NOT_FOUND", "No such contact.");
   return contact;
 }
+
+/**
+ * Forgets a recipient.
+ *
+ * Scoped to the chat that owns it. The key is derived from the chat id, so a request naming
+ * somebody else's contactId simply finds nothing: there is no way to delete across chats even with
+ * the bot's shared secret, which is the point, because that secret is not much of a secret.
+ */
+export function forgetContact(vault: Vault, waId: string, contactId: string): { forgotten: boolean } {
+  const existing = vault.get<Contact>(contactKey(waId, contactId));
+  if (!existing) throw new RelayerError("NOT_FOUND", "No such contact.");
+  vault.delete(contactKey(waId, contactId));
+  return { forgotten: true };
+}

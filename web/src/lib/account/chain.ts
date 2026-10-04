@@ -10,7 +10,7 @@ export const SETTLEMENT_ASSET: Address = (process.env.NEXT_PUBLIC_SETTLEMENT_ASS
 
 /** RailCore: the escrow the authorisation names as its recipient. */
 export const ESCROW: Address = (process.env.NEXT_PUBLIC_RAIL_CORE ||
-  "0x1DdEa1bBA4978BF5C58889c9F1f9ef09e21236DE") as Address;
+  "0xfa8C88Ee0fCF869783F489cADB222750F576f221") as Address;
 
 export const CHAIN_ID = monadTestnet.id;
 const DECIMALS = 6;

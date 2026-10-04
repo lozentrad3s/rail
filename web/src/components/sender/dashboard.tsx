@@ -31,7 +31,7 @@ function Figure({
   tone = "ink",
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   hint?: string;
   icon: React.ReactNode;
   tone?: "ink" | "accent";
@@ -107,14 +107,14 @@ export function Dashboard({ address }: { address: `0x${string}` | undefined }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <Figure
           label="Given back by the auction"
-          value={totals ? usd(unitsToDollars(totals.returnedUnits)) : "..."}
+          value={totals ? usd(unitsToDollars(totals.returnedUnits)) : <span className="skeleton" aria-label="Loading">0.00</span>}
           hint="Providers bid under your limit. The difference is yours."
           icon={<PiggyBank className="size-[18px]" strokeWidth={2} />}
           tone="accent"
         />
         <Figure
           label="Delivered"
-          value={totals ? ngn(minorToUnit(totals.deliveredLocalMinor)) : "..."}
+          value={totals ? ngn(minorToUnit(totals.deliveredLocalMinor)) : <span className="skeleton" aria-label="Loading">0.00</span>}
           hint={
             totals
               ? `${totals.delivered} transfer${totals.delivered === 1 ? "" : "s"} arrived`
@@ -124,13 +124,13 @@ export function Dashboard({ address }: { address: `0x${string}` | undefined }) {
         />
         <Figure
           label="Paid out"
-          value={totals ? usd(unitsToDollars(totals.spentUnits)) : "..."}
+          value={totals ? usd(unitsToDollars(totals.spentUnits)) : <span className="skeleton" aria-label="Loading">0.00</span>}
           hint="What the transfers and fees actually cost."
           icon={<ArrowUpRight className="size-[18px]" strokeWidth={2} />}
         />
         <Figure
           label="Still running"
-          value={totals ? String(totals.running) : "..."}
+          value={totals ? String(totals.running) : <span className="skeleton" aria-label="Loading">0.00</span>}
           hint={totals && totals.running > 0 ? "We will tell you in the chat." : "Nothing in flight."}
           icon={<Clock className="size-[18px]" strokeWidth={2} />}
         />

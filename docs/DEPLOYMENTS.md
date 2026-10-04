@@ -166,6 +166,37 @@ $200 of free stake on this instance.
 
 ---
 
+## Monad testnet — current instance (chain `10143`)
+
+Deployed 4 October 2026. Same code; the auction windows are **150 blocks** each way.
+
+| Contract | Address |
+|---|---|
+| `RailCore` | [`0xfa8C88Ee0fCF869783F489cADB222750F576f221`](https://testnet.monadexplorer.com/address/0xfa8C88Ee0fCF869783F489cADB222750F576f221) |
+| `LPRegistry` | [`0x4C10f838b44A67C09B368c744D0d281cB3407E09`](https://testnet.monadexplorer.com/address/0x4C10f838b44A67C09B368c744D0d281cB3407E09) |
+| `SignedAttestor` (minLayer 1) | [`0x507756b1f5CCC8d1C960468ca815DA2efFDD3906`](https://testnet.monadexplorer.com/address/0x507756b1f5CCC8d1C960468ca815DA2efFDD3906) |
+
+### Why 150, when 30 was already measured as enough
+
+Thirty blocks is twelve seconds. That is comfortable for a bot and impossible for a person: the
+provider page has to poll, then somebody reads the request, decides a price, types it, approves a
+wallet prompt, and waits for inclusion. Every manual bid missed.
+
+Rail is meant to be open to anybody holding naira and a bank account. A window only software can
+reach makes it a professionals-only market, which is the thing it exists to replace. A bot loses
+nothing by the change: it still commits in under two seconds. What it costs is settlement time,
+about two minutes rather than twenty-four seconds.
+
+`payoutBlocks` moves with it, 2000 to 4500: thirty minutes to notice a win and complete a bank
+transfer, where thirteen was tight for a human.
+
+The dispute and resolution windows are unchanged, because their length is coupled to the attestor
+rather than to who is bidding. See `contracts/test/RailCore.attack.t.sol`.
+
+Both pilot providers hold $200 of free stake on this instance.
+
+---
+
 ## Monad mainnet (chain `143`)
 
 Not deployed. Mainnet AUSD is [`0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`](https://monadscan.com/address/0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a).

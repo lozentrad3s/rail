@@ -33,12 +33,26 @@ contract Deploy is Script {
      * provider on an ordinary connection can compete rather than only the luckiest one. The whole
      * auction still finishes inside half a minute, against days for the incumbents.
      *
-     * The real fix is a dedicated RPC endpoint, which would cut the variance this is padding
-     * against. Until there is one, the padding stays. Override with COMMIT_BLOCKS / REVEAL_BLOCKS.
+     * **One hundred and fifty, because a person has to be able to bid.** Thirty blocks is twelve
+     * seconds, which is fine for a bot and impossible for a human: the provider page polls, then
+     * somebody has to read the request, decide a price, type it, approve a wallet prompt and wait
+     * for inclusion. Rail is meant to be open to any provider holding naira and a bank account,
+     * and a window only software can reach quietly makes it a professionals-only market, which is
+     * the thing it exists to replace.
+     *
+     * A bot loses nothing: it still bids in under two seconds, and a wider window does not slow its
+     * commit. What it costs is settlement time, about two minutes instead of twenty-four seconds,
+     * and that is the right trade for a market anyone can join.
+     *
+     * The payout deadline moves with it: thirteen minutes to notice a win and complete a bank
+     * transfer is tight for a person, thirty is not.
+     *
+     * The real fix for the inclusion variance is a dedicated RPC endpoint. Until there is one, the
+     * padding stays. Override with COMMIT_BLOCKS / REVEAL_BLOCKS.
      */
-    uint64 constant COMMIT_BLOCKS = 30;
-    uint64 constant REVEAL_BLOCKS = 30;
-    uint64 constant PAYOUT_BLOCKS = 2000;
+    uint64 constant COMMIT_BLOCKS = 150;
+    uint64 constant REVEAL_BLOCKS = 150;
+    uint64 constant PAYOUT_BLOCKS = 4500;
     uint64 constant DISPUTE_BLOCKS = 200;
     uint64 constant RESOLUTION_BLOCKS = 2000;
     uint16 constant COLLATERAL_BPS = 11_000;

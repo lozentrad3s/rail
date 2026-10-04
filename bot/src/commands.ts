@@ -15,7 +15,13 @@ export type Command =
   | { kind: "add"; contactName: string }
   | { kind: "send"; localAmount: bigint; contactName: string }
   | { kind: "send-unreadable-amount" }
-  | { kind: "account-number" };
+  | { kind: "account-number" }
+  | { kind: "rate" }
+  | { kind: "fund" }
+  | { kind: "about" }
+  | { kind: "remove"; contactName: string }
+  | { kind: "confirm" }
+  | { kind: "decline" };
 
 /** A run of 8–11 digits is an account number in every market we serve. */
 const LOOKS_LIKE_ACCOUNT = /(?<!\d)\d{8,11}(?!\d)/;
@@ -30,6 +36,15 @@ export function parseCommand(raw: string): Command {
   if (GREETINGS.has(lower)) return { kind: "welcome" };
   if (lower === "balance" || lower === "bal") return { kind: "balance" };
   if (lower === "contacts" || lower === "contact" || lower === "list") return { kind: "contacts" };
+  if (lower === "rate" || lower === "rates" || lower === "price") return { kind: "rate" };
+  if (lower === "fund" || lower === "deposit" || lower === "top up" || lower === "topup") {
+    return { kind: "fund" };
+  }
+  if (lower === "about" || lower === "support" || lower === "info") return { kind: "about" };
+
+  // Only meaningful straight after a question the bot asked, which the handler tracks.
+  if (lower === "yes" || lower === "y" || lower === "confirm") return { kind: "confirm" };
+  if (lower === "no" || lower === "n" || lower === "cancel") return { kind: "decline" };
 
   const send = /^send\s+(.+?)\s+to\s+(.+)$/i.exec(text);
   if (send) {
@@ -40,6 +55,12 @@ export function parseCommand(raw: string): Command {
   }
 
   // Anchored on a word boundary, or "address" parses as adding a contact called "ress".
+  const remove = /^(?:remove|forget|delete)(?:\s+(.*))?$/i.exec(text);
+  if (remove) {
+    const contactName = (remove[1] ?? "").trim();
+    return { kind: "remove", contactName };
+  }
+
   const add = /^add(?:\s+(.*))?$/i.exec(text);
   if (add) {
     const contactName = (add[1] ?? "").trim();
