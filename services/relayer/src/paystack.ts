@@ -69,8 +69,23 @@ export async function listBanks(deps: PaystackDeps, currency: string): Promise<B
     .map((bank) => ({ code: bank.code, name: bank.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  cache.set(currency, { at: Date.now(), banks });
-  return banks;
+  /**
+   * On a test key, offer Paystack's test bank first.
+   *
+   * Test mode allows three live bank resolves *per day* across the whole account, after which every
+   * real account number fails with "could not be found" — which reads as a broken product rather
+   * than a quota. Bank code 001 resolves any account number without touching that quota, so on a
+   * test key it goes at the top of the list and is the only one that works all day.
+   *
+   * A live key never sees it, so production cannot accidentally save a recipient at a fake bank.
+   */
+  const withTestBank =
+    deps.secretKey?.startsWith("sk_test_") === true
+      ? [{ code: "001", name: "Test Bank (test mode only)" }, ...banks]
+      : banks;
+
+  cache.set(currency, { at: Date.now(), banks: withTestBank });
+  return withTestBank;
 }
 
 /** The name on the account, so the sender can see who they are about to pay. */
