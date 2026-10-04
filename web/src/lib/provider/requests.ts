@@ -46,8 +46,15 @@ function decodeCurrency(packed: Hex): string {
   return out;
 }
 
-/** Only orders still biddable. An order whose reveal window has closed is somebody else's problem. */
-export async function readOpenRequests(lookback = 2_000n): Promise<Request[]> {
+/**
+ * Only orders still biddable.
+ *
+ * The lookback is 100 blocks because the public Monad RPC refuses a wider `eth_getLogs` range with
+ * a 413, and because it does not need to be wider: a commit window is 30 blocks and a reveal window
+ * 30 more, so anything older than 100 blocks stopped being biddable before this call was made.
+ * A provider on a dedicated RPC can afford a longer view, and would gain nothing from it.
+ */
+export async function readOpenRequests(lookback = 100n): Promise<Request[]> {
   const head = await client.getBlockNumber();
   const fromBlock = head > lookback ? head - lookback : 0n;
 

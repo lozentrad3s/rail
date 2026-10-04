@@ -1,62 +1,83 @@
 /**
- * What this account has actually sent, read from the chain.
+ * What this account has sent.
  *
- * The chain is the source of truth, not a cache on the device: the same passkey on a new phone must
- * show the same history, and a number on a dashboard that disagrees with the escrow is worse than
- * no number. So every figure here is summed from events `RailCore` emitted.
+ * Read one order at a time by id, not by scanning logs. The public Monad RPC caps `eth_getLogs` at
+ * **100 blocks**, and this contract was deployed roughly 3.7 million blocks ago, so scanning for a
+ * sender's history would need tens of thousands of requests and every one of them failed with 413
+ * on the live site. A single `getOrder(orderId)` has no such limit.
  *
- * `changeToSender` on `OrderSettled` is the money the auction gave back. The sender sets a ceiling,
- * providers undercut each other below it, and the difference returns (Rail invariant 5). It is the
- * only "reward" in Rail and it is not a reward at all, it is their own money that was never needed.
+ * The cost is that history lives on the device that made it: the same passkey on a new phone shows
+ * an empty list until it sends something. That is a real limitation and the honest fix is an
+ * indexer, or a relayer endpoint that indexes by sender. Showing nothing was worse.
+ *
+ * `maxAusd - winningBid` is the money the auction gave back (Rail invariant 5). It is the only
+ * "reward" in Rail and it is not a reward at all: it is the sender's own money that was never
+ * needed, because providers competed below the ceiling they set.
  */
 import { parseAbi, type Address, type Hex } from "viem";
 
 import { client, ESCROW } from "./chain";
 
-/** The block the current escrow was deployed in. Nothing before it can concern this contract. */
-const DEPLOYED_AT = BigInt(process.env.NEXT_PUBLIC_ESCROW_FROM_BLOCK || "64457000");
+const STORAGE_KEY = "rail.orders.v1";
 
-/** Public nodes cap a getLogs range, so a long history is fetched in pieces. */
-const RANGE = 45_000n;
+/** Mirrors `Status` in contracts/src/interfaces/IRail.sol. */
+const STATUS = ["None", "Open", "Awarded", "Paid", "Disputed", "Settled", "Refunded", "Cancelled"] as const;
 
-const events = parseAbi([
-  "event OrderCreated(bytes32 indexed orderId, address indexed sender, bytes3 indexed currency, uint256 localAmount, uint256 maxAusd, uint256 fee, address attestor, bytes32 recipientCommitment, uint64 commitEnd, uint64 revealEnd)",
-  "event OrderSettled(bytes32 indexed orderId, address indexed winner, uint256 paidToLp, uint256 changeToSender)",
-  "event OrderRefunded(bytes32 indexed orderId, address indexed sender, uint256 escrow, uint256 slashed)",
+const coreAbi = parseAbi([
+  "struct Order { address sender; uint8 status; bytes3 currency; uint64 commitEnd; address winner; uint64 revealEnd; address attestor; uint64 payoutDeadline; uint128 maxAusd; uint128 winningBid; bytes32 recipientCommitment; uint256 localAmount; uint64 disputeEnd; uint64 resolutionEnd; }",
+  "function getOrder(bytes32 orderId) view returns (Order)",
 ]);
-
-const [orderCreated, orderSettled, orderRefunded] = events;
 
 export type TransferStatus = "running" | "delivered" | "returned";
 
 export type Transfer = {
   orderId: Hex;
-  /** Minor units of the local currency: kobo for naira. */
   localAmountMinor: bigint;
   currency: string;
-  /** The ceiling the sender signed, plus the relayer's fee. */
   ceilingUnits: bigint;
   feeUnits: bigint;
   status: TransferStatus;
-  /** What the winning provider was actually paid. Present once delivered. */
   paidUnits?: bigint;
-  /** What came back because providers competed. Present once delivered. */
+  /** What came back because providers competed. */
   returnedUnits?: bigint;
-  block: bigint;
 };
 
 export type Totals = {
   delivered: number;
   running: number;
-  /** Local currency actually delivered, in minor units. */
   deliveredLocalMinor: bigint;
-  /** Dollars that left the account for good. */
   spentUnits: bigint;
-  /** Dollars the auction handed back. The headline number. */
   returnedUnits: bigint;
 };
 
-/** `bytes3` of ASCII, so 0x4e474e reads NGN. */
+type Remembered = { orderId: Hex; sender: Address; feeUnits: string; at: number };
+
+function readAll(): Remembered[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Remembered[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Records an order the moment this device submits one.
+ *
+ * Called by `approveProposal` right after the relayer accepts it, because an order nobody wrote
+ * down is an order this device can never show again.
+ */
+export function rememberOrder(orderId: Hex, sender: Address, feeUnits: bigint): void {
+  try {
+    const kept = readAll().filter((o) => o.orderId.toLowerCase() !== orderId.toLowerCase());
+    kept.push({ orderId, sender, feeUnits: feeUnits.toString(), at: Date.now() });
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(kept.slice(-100)));
+  } catch {
+    // Storage can be refused. The transfer still happens; only this list loses it.
+  }
+}
+
 function decodeCurrency(packed: Hex): string {
   let out = "";
   for (let i = 2; i < packed.length; i += 2) {
@@ -66,96 +87,55 @@ function decodeCurrency(packed: Hex): string {
   return out;
 }
 
-/**
- * Reads in windows, newest first, and stops early once it has enough.
- *
- * A dashboard that takes twenty seconds to appear is a dashboard nobody waits for, so this trades
- * completeness for arrival: `limit` transfers from the recent past beats every transfer eventually.
- */
 export async function readHistory(
   address: Address,
   options: { limit?: number } = {},
 ): Promise<{ transfers: Transfer[]; totals: Totals; partial: boolean }> {
   const limit = options.limit ?? 25;
-  const head = await client.getBlockNumber();
+  const mine = readAll()
+    .filter((o) => o.sender.toLowerCase() === address.toLowerCase())
+    .sort((a, b) => b.at - a.at)
+    .slice(0, limit);
 
-  const created: Transfer[] = [];
-  let cursor = head;
-  let partial = false;
+  if (mine.length === 0) return { transfers: [], totals: emptyTotals(), partial: false };
 
-  while (cursor > DEPLOYED_AT && created.length < limit) {
-    const fromBlock = cursor - RANGE > DEPLOYED_AT ? cursor - RANGE : DEPLOYED_AT;
+  const results = await Promise.all(
+    mine.map(async (record) => {
+      try {
+        const order = await client.readContract({
+          address: ESCROW,
+          abi: coreAbi,
+          functionName: "getOrder",
+          args: [record.orderId],
+        });
 
-    let logs;
-    try {
-      logs = await client.getLogs({
-        address: ESCROW,
-        event: orderCreated,
-        args: { sender: address },
-        fromBlock,
-        toBlock: cursor,
-      });
-    } catch {
-      // A node that refuses a range is not a reason to show nothing: keep what was read and say so.
-      partial = true;
-      break;
-    }
+        const name = STATUS[order.status] ?? "None";
+        // Refunded and Cancelled both return the escrow, so they read the same to a person.
+        const status: TransferStatus =
+          name === "Settled" ? "delivered" : name === "Refunded" || name === "Cancelled" ? "returned" : "running";
 
-    for (const log of logs.reverse()) {
-      const a = log.args;
-      if (!a.orderId || a.localAmount === undefined) continue;
-      created.push({
-        orderId: a.orderId,
-        localAmountMinor: a.localAmount,
-        currency: a.currency ? decodeCurrency(a.currency) : "",
-        ceilingUnits: a.maxAusd ?? 0n,
-        feeUnits: a.fee ?? 0n,
-        status: "running",
-        block: log.blockNumber ?? 0n,
-      });
-    }
+        const transfer: Transfer = {
+          orderId: record.orderId,
+          localAmountMinor: order.localAmount,
+          currency: decodeCurrency(order.currency),
+          ceilingUnits: BigInt(order.maxAusd),
+          feeUnits: BigInt(record.feeUnits),
+          status,
+        };
 
-    if (fromBlock === DEPLOYED_AT) break;
-    cursor = fromBlock - 1n;
-  }
+        if (status === "delivered") {
+          transfer.paidUnits = BigInt(order.winningBid);
+          transfer.returnedUnits = BigInt(order.maxAusd) - BigInt(order.winningBid);
+        }
+        return transfer;
+      } catch {
+        return undefined;
+      }
+    }),
+  );
 
-  const transfers = created.slice(0, limit);
-  if (transfers.length === 0) {
-    return { transfers, totals: emptyTotals(), partial };
-  }
-
-  // Outcomes are looked up by order id, so one window covering the oldest transfer is enough.
-  const since = transfers.reduce((lowest, t) => (t.block < lowest ? t.block : lowest), head);
-  const ids = new Set(transfers.map((t) => t.orderId.toLowerCase()));
-
-  const [settled, refunded] = await Promise.all([
-    client
-      .getLogs({ address: ESCROW, event: orderSettled, fromBlock: since, toBlock: head })
-      .catch(() => []),
-    client
-      .getLogs({ address: ESCROW, event: orderRefunded, args: { sender: address }, fromBlock: since, toBlock: head })
-      .catch(() => []),
-  ]);
-
-  for (const log of settled) {
-    const id = log.args.orderId?.toLowerCase();
-    if (!id || !ids.has(id)) continue;
-    const transfer = transfers.find((t) => t.orderId.toLowerCase() === id);
-    if (!transfer) continue;
-    transfer.status = "delivered";
-    transfer.paidUnits = log.args.paidToLp ?? 0n;
-    transfer.returnedUnits = log.args.changeToSender ?? 0n;
-  }
-
-  for (const log of refunded) {
-    const id = log.args.orderId?.toLowerCase();
-    if (!id) continue;
-    const transfer = transfers.find((t) => t.orderId.toLowerCase() === id);
-    // A refund returns the whole escrow, so nothing was spent and nothing was saved.
-    if (transfer) transfer.status = "returned";
-  }
-
-  return { transfers, totals: totalsFor(transfers), partial };
+  const transfers = results.filter((t): t is Transfer => t !== undefined);
+  return { transfers, totals: totalsFor(transfers), partial: transfers.length < mine.length };
 }
 
 const emptyTotals = (): Totals => ({
@@ -177,10 +157,7 @@ export function totalsFor(transfers: Transfer[]): Totals {
         returnedUnits: totals.returnedUnits + (transfer.returnedUnits ?? 0n),
       };
     }
-    if (transfer.status === "running") {
-      return { ...totals, running: totals.running + 1 };
-    }
-    // Returned in full: it neither cost nor saved anything.
+    if (transfer.status === "running") return { ...totals, running: totals.running + 1 };
     return totals;
   }, emptyTotals());
 }

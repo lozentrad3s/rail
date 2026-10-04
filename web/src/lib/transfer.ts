@@ -7,6 +7,7 @@
  * decision.
  */
 import { authoriseTransfer, type Terms } from "@/lib/account/authorise";
+import { rememberOrder } from "@/lib/account/history";
 import { signerFor, type SignerKind } from "@/lib/account/signer";
 import { readDraft, readQuote, submitOrder } from "@/lib/rail-api";
 
@@ -91,6 +92,9 @@ export async function approveProposal(
     });
 
     const { orderId } = await submitOrder(signed);
+    // Written down here because nothing else can find it later: the public RPC caps a log scan at
+    // 100 blocks, so an order this device does not remember is one it can never show again.
+    rememberOrder(orderId as `0x${string}`, signer.address, proposal.terms.fee);
     return { reference: orderId };
   } finally {
     signer.end();
