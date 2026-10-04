@@ -1,11 +1,16 @@
 import { Chapter, Container, Eyebrow, SourceLink } from "./primitives";
 import { Reveal } from "./reveal";
+import { auction } from "@/lib/site";
 
 // Builder register: precise terms are welcome here (docs/DESIGN.md §8).
 const STATS = [
   { value: "300ms", label: "Block time", note: "One tick of the auction" },
   { value: "600ms", label: "Finality", note: "A won bid is settled, not provisional" },
-  { value: "~24s", label: "A full sealed auction", note: "30 commit blocks + 30 reveal blocks" },
+  {
+    value: `~${auction.totalSeconds}s`,
+    label: "A full sealed auction",
+    note: `${auction.commitBlocks} commit blocks + ${auction.revealBlocks} reveal blocks`,
+  },
   { value: "≈0", label: "Fees", note: "Near-zero, so a $50 transfer is worth auctioning" },
 ];
 
@@ -38,10 +43,11 @@ export function WhyMonad() {
               long, or costs too much, to sit inside a payment.
             </p>
             <p className="mt-4 max-w-[36rem] text-body text-night-muted">
-              On Monad a round is measured in blocks, not minutes. Our pilot runs 30 blocks each way, about half
-              a minute for both rounds and final settlement, at near-zero fees. The windows are that wide to
-              give providers on ordinary connections room to compete, not because the chain needs it. And every
-              sender is a new Monad account, created with Face ID by someone who has never used crypto.
+              On Monad a round is measured in blocks, not minutes. Our pilot runs {auction.commitBlocks} blocks
+              each way, about {auction.totalSeconds} seconds for both rounds and final settlement, at near-zero
+              fees. The windows are that wide so a person can bid by hand and not only a bot, which is what makes
+              this a market anyone can join. And every sender is a new Monad account, created with a passkey by
+              someone who has never used crypto.
             </p>
             <blockquote className="mt-10 border-l-2 border-accent pl-5">
               <p className="text-[clamp(1.375rem,1.1rem+1vw,1.75rem)] leading-[1.3] tracking-[-0.015em]">

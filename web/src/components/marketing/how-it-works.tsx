@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { motion, useReducedMotion, useScroll } from "motion/react";
 import { Chapter, Container, Eyebrow } from "./primitives";
 import { Reveal } from "./reveal";
+import { auction } from "@/lib/site";
 
 const STEPS = [
   {
@@ -17,9 +18,9 @@ const STEPS = [
     detail: "RailCore escrow · AUSD",
   },
   {
-    title: "Providers bid for half a minute",
+    title: `Providers bid for ${auction.totalSeconds} seconds`,
     body: "Sealed bids first, so nobody can copy a price. Then they reveal. The lowest wins.",
-    detail: "Commit–reveal · 30 + 30 blocks",
+    detail: `Commit–reveal · ${auction.commitBlocks} + ${auction.revealBlocks} blocks`,
   },
   {
     title: "The winner pays your family",

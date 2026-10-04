@@ -256,6 +256,24 @@ export function ProviderScreen() {
             Stake dollars, bid on transfers you want, pay from your own bank account, and collect
             your bid. No application, no approval, no account manager.
           </p>
+
+          <dl className="clay mt-6 grid grid-cols-2 gap-4 p-5 text-small">
+            <div>
+              <dt className="text-ink-muted">Minimum stake</dt>
+              <dd className="mt-1 text-[1.0625rem] font-semibold tabular-nums">$100</dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">Collateral per win</dt>
+              <dd className="mt-1 text-[1.0625rem] font-semibold tabular-nums">110%</dd>
+            </div>
+            <div className="col-span-2">
+              <dd className="text-ink-muted">
+                Your stake is yours. It locks only while you are the leading bid, and unlocks the
+                moment the payment is proven. Walking away from a transfer you won costs more than
+                delivering it, which is exactly why a stranger can trust you with their money.
+              </dd>
+            </div>
+          </dl>
           <button
             type="button"
             onClick={() => void connect()}

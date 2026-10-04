@@ -5,11 +5,12 @@ import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/rea
 import { Lock, Play, RotateCcw, TriangleAlert, Trophy } from "lucide-react";
 import { cn, ngn, dollarsFromCents } from "@/lib/format";
 import { BLOCK_MS, ease, spring } from "@/lib/motion";
-import { demo } from "@/lib/site";
+import { auction, demo } from "@/lib/site";
 
 /**
- * A faithful simulation of RailCore's auction (docs/INTERFACES.md §2, §4.3):
- * commit for 5 blocks, reveal for 5 blocks, award after. A revealed bid leads only if it is strictly
+ * A simulation of RailCore's auction (docs/INTERFACES.md §2, §4.3), compressed so it can be
+ * watched: five ticks per phase here, 150 blocks per phase on chain. The mechanism is faithful,
+ * the clock is not, and the caption says so rather than quoting a block count that is not real. A revealed bid leads only if it is strictly
  * lower than the current leader AND its provider has free stake ≥ ceil(bid × collateralBps / 10000).
  * Everything rendered is derived from (scenario, tick), so restarting mid-run can never desync.
  */
@@ -257,7 +258,9 @@ export function AuctionSim() {
           </button>
           <SpeedToggle slow={slow} onChange={setSlow} />
         </div>
-        <p className="text-label text-night-muted">Simulation · Monad’s real 300ms block time</p>
+        <p className="text-label text-night-muted">
+          Simulation, sped up · the real auction takes {auction.totalSeconds}s
+        </p>
       </div>
     </div>
   );
@@ -298,8 +301,8 @@ function BlockTrack({ tick }: { tick: number }) {
         })}
       </div>
       <div className="text-label mt-2 grid grid-cols-2 gap-1 text-night-muted">
-        <span>Commit · 5 blocks</span>
-        <span>Reveal · 5 blocks</span>
+        <span>Commit · {auction.commitBlocks} blocks</span>
+        <span>Reveal · {auction.revealBlocks} blocks</span>
       </div>
     </div>
   );
