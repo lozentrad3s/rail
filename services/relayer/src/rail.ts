@@ -11,6 +11,11 @@ export const railCoreAbi = parseAbi([
   "function dispute(bytes32 orderId, bytes signature)",
 ]);
 
+/** The one thing the relayer asks the asset itself: has the sender got it. */
+export const ausdAbi = parseAbi([
+  "function balanceOf(address account) view returns (uint256)",
+]);
+
 /** Measured with `forge test --gas-report`: createOrder max 273,180. */
 export const CREATE_ORDER_GAS = 400_000n;
 

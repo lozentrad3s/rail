@@ -5,10 +5,16 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, CircleAlert, Landmark, ScanFace, ShieldCheck } from "lucide-react";
 import { Assurance, Notice, Screen } from "./screen";
-import { ngn, usd } from "@/lib/format";
+import { cn, ngn, usd } from "@/lib/format";
 import { spring } from "@/lib/motion";
 import { ApiError } from "@/lib/rail-api";
-import { approveProposal, loadProposal, type Proposal } from "@/lib/transfer";
+import {
+  approveProposal,
+  checkFunds,
+  loadProposal,
+  type Funds,
+  type Proposal,
+} from "@/lib/transfer";
 import { preferredSigner, signerFailure, type SignerKind } from "@/lib/account/signer";
 import { unlockKind, unlockName, unlockWaiting } from "@/lib/unlock";
 import { useDeviceFact } from "@/lib/use-device-fact";
@@ -49,6 +55,11 @@ const FAILURES: Record<string, Failure> = {
     title: "Nothing on this device can approve",
     detail: "Set up Face ID, or open Rail in an app that can approve payments.",
   },
+  short: {
+    title: "Not enough in your account",
+    detail:
+      "Nothing has left it. Add a little more and this request will still be here for a few minutes.",
+  },
   unknown: UNKNOWN,
 };
 
@@ -72,6 +83,27 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
     undefined,
   );
   const kind = useDeviceFact(unlockKind, "generic");
+
+  /**
+   * What the account holds, read once the proposal and the signer are both known.
+   *
+   * undefined means "could not tell", which is not "empty" — the button stays available, because a
+   * connection problem must not stop somebody sending their own money, and the amount is checked
+   * again before anything is spent.
+   */
+  const [funds, setFunds] = useState<Funds | undefined>(undefined);
+  const shortfall = funds?.short ?? 0;
+
+  useEffect(() => {
+    if (!proposal || !signer) return;
+    let cancelled = false;
+    void checkFunds(proposal, signer).then((read) => {
+      if (!cancelled) setFunds(read);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [proposal, signer]);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,24 +238,64 @@ export function ApproveScreen({ draftId }: { draftId: string }) {
                 <dt className="text-ink-muted">Most you can pay</dt>
                 <dd className="font-semibold tabular-nums">{usd(proposal.mostYouPay)}</dd>
               </div>
+              {/* Only once it is known. A balance that reads zero while loading is a small heart attack. */}
+              {funds ? (
+                <div className="flex items-baseline justify-between">
+                  <dt className="text-ink-muted">In your account</dt>
+                  <dd
+                    className={cn(
+                      "tabular-nums",
+                      shortfall > 0 && "font-semibold text-slash-text",
+                    )}
+                  >
+                    {usd(funds.available)}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
 
-            <button
-              type="button"
-              onClick={() => void approve()}
-              disabled={busy}
-              aria-disabled={busy}
-              className="btn btn-primary mt-8 w-full text-[1rem]"
-            >
-              <ScanFace className="size-[19px]" strokeWidth={2.2} aria-hidden="true" />
-              {signer === "connected"
-                ? busy
-                  ? "Waiting for your approval…"
-                  : "Approve to send"
-                : busy
-                  ? unlockWaiting(kind)
-                  : `Approve with ${unlockName(kind)}`}
-            </button>
+            {/*
+             * Short, so there is nothing to approve yet.
+             *
+             * The button is replaced rather than merely disabled: a disabled button with no reason
+             * beside it is the worst version of this screen, and the number is the whole point —
+             * somebody can act on "$17.65 more" and cannot act on a greyed-out button.
+             */}
+            {shortfall > 0 ? (
+              <div className="clay mt-8 p-4">
+                <p className="font-semibold">
+                  You need {usd(shortfall)} more to send this.
+                </p>
+                <p className="text-small mt-1 text-ink-muted">
+                  Nothing has left your account. Add a little more and come back — this request is
+                  good for a few more minutes.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/account")}
+                  className="btn btn-primary mt-4 w-full"
+                >
+                  Add money
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void approve()}
+                disabled={busy}
+                aria-disabled={busy}
+                className="btn btn-primary mt-8 w-full text-[1rem]"
+              >
+                <ScanFace className="size-[19px]" strokeWidth={2.2} aria-hidden="true" />
+                {signer === "connected"
+                  ? busy
+                    ? "Waiting for your approval…"
+                    : "Approve to send"
+                  : busy
+                    ? unlockWaiting(kind)
+                    : `Approve with ${unlockName(kind)}`}
+              </button>
+            )}
 
             <ul className="text-small mt-9 grid gap-3.5 text-ink-muted">
               <Assurance icon={<ShieldCheck className="size-[18px]" strokeWidth={2} />}>

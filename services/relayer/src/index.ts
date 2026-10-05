@@ -20,7 +20,7 @@ import { RelayerError } from "./errors.ts";
 import { assertSaneFallback, currentRate } from "./fx.ts";
 import { Router } from "./http.ts";
 import { SubmissionQueue } from "./nonce.ts";
-import { createOrder, payoutDetails, readOrder, type OrderDeps } from "./orders.ts";
+import { createOrder, payoutDetails, readBalance, readOrder, type OrderDeps } from "./orders.ts";
 import { listBanks, resolveAccount } from "./paystack.ts";
 import { priceTransfer } from "./quote.ts";
 import { RecipientStore } from "./recipients.ts";
@@ -84,7 +84,7 @@ const router = new Router({ allowedOrigins: config.allowedOrigins })
     app: "https://rail-pay.vercel.app",
     chat: "https://t.me/RailpayBot",
     note: "This is Rail's relayer API. It quotes transfers and submits the orders senders sign. It never holds anyone's money, and settlement does not depend on it: finalize and refund are permissionless.",
-    endpoints: ["GET /healthz", "GET /v1/quote", "GET /v1/banks", "POST /v1/orders", "GET /v1/orders/:orderId"],
+    endpoints: ["GET /healthz", "GET /v1/quote", "GET /v1/banks", "GET /v1/balance", "POST /v1/orders", "GET /v1/orders/:orderId"],
   }))
 
   .get("/healthz", async () => ({ ok: true }))
@@ -241,6 +241,9 @@ const router = new Router({ allowedOrigins: config.allowedOrigins })
       attestor: config.attestor,
     };
   })
+
+  // Asked before approving, so a sender who is short finds out before signing rather than after.
+  .get("/v1/balance", async ({ query }) => readBalance(deps, query.get("address") ?? ""))
 
   .post("/v1/orders", async ({ body }) => createOrder(deps, body))
 

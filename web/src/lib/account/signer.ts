@@ -112,6 +112,19 @@ export function availableSigners(): { passkey: boolean; wallet: boolean; connect
   };
 }
 
+/**
+ * The address a given signer would use, without prompting for it.
+ *
+ * A passkey's address is stored alongside it precisely so this does not need a Face ID prompt;
+ * asking somebody to authenticate just so a screen can read their balance would be absurd. Returns
+ * undefined when that signer is not set up on this device.
+ */
+export function addressFor(kind: SignerKind): Address | undefined {
+  return kind === "connected"
+    ? (connectedAddress() ?? undefined)
+    : (loadAccount()?.address ?? undefined);
+}
+
 /** Face ID, then a session that is ended the moment the caller is done with it. */
 export async function passkeySigner(): Promise<TransferSigner> {
   const unlocked = await unlockAccount();

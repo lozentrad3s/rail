@@ -13,15 +13,40 @@ export type ApiFailure =
   | "offline"
   | "account-not-found"
   | "not-configured"
+  | "short"
   | "unknown";
 
 export class ApiError extends Error {
   readonly reason: ApiFailure;
+  /**
+   * How much was needed and how much there was, in dollars. Only on "short".
+   *
+   * Carried because a sender can act on "you need $17.65 more" and cannot act on anything else we
+   * could say here. Dollars rather than units, since nothing above this line should have to know
+   * what a unit is.
+   */
+  readonly funds?: { required: number; available: number };
 
-  constructor(reason: ApiFailure, message: string) {
+  constructor(
+    reason: ApiFailure,
+    message: string,
+    funds?: { required: number; available: number },
+  ) {
     super(message);
     this.name = "ApiError";
     this.reason = reason;
+    this.funds = funds;
+  }
+}
+
+const DECIMALS = 1_000_000;
+
+/** A decimal string of AUSD units to dollars. Returns 0 for anything unparseable. */
+function toDollars(units: unknown): number {
+  try {
+    return Number(BigInt(String(units))) / DECIMALS;
+  } catch {
+    return 0;
   }
 }
 
@@ -42,10 +67,22 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown })
   const parsed = text ? (JSON.parse(text) as unknown) : {};
 
   if (!response.ok) {
-    const error = (parsed as { error?: { code?: string; message?: string } }).error;
+    const error = (
+      parsed as {
+        error?: { code?: string; message?: string; data?: Record<string, string> };
+      }
+    ).error;
     const code = error?.code;
     if (code === "NOT_FOUND") throw new ApiError("expired", "This link has expired.");
     if (code === "UNAUTHORIZED") throw new ApiError("rejected", "That didn't match.");
+    if (code === "INSUFFICIENT_BALANCE") {
+      // Possible even after the app checked, if money left the account in between. Rare, and the
+      // sender still deserves the number rather than a shrug.
+      throw new ApiError("short", "There isn't enough in your account for this transfer.", {
+        required: toDollars(error?.data?.required),
+        available: toDollars(error?.data?.available),
+      });
+    }
     if (code === "ACCOUNT_NOT_RESOLVED") {
       // The relayer says this either when the bank cannot find the account, or when name checking
       // is not configured at all. They read very differently to a person, so they are separated.
@@ -147,6 +184,20 @@ export function readQuote(currency: string, localAmount: string): Promise<QuoteD
   return call(
     `/v1/quote?currency=${encodeURIComponent(currency)}&localAmount=${encodeURIComponent(localAmount)}`,
   );
+}
+
+/**
+ * What an account holds, in dollars.
+ *
+ * Asked through the relayer rather than an RPC of our own: the public endpoint rate-limits a browser
+ * and caps what it will answer, and a balance that silently reads zero would tell somebody their
+ * money is gone. The relayer has a dedicated endpoint and one job here, which is to answer this.
+ */
+export async function readAvailable(address: string): Promise<number> {
+  const { balance } = await call<{ balance: string }>(
+    `/v1/balance?address=${encodeURIComponent(address)}`,
+  );
+  return toDollars(balance);
 }
 
 /** Hands over what the passkey already signed. The relayer pays the fee and can alter nothing. */

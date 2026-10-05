@@ -8,8 +8,8 @@
  */
 import { authoriseTransfer, type Terms } from "@/lib/account/authorise";
 import { rememberOrder } from "@/lib/account/history";
-import { signerFor, type SignerKind } from "@/lib/account/signer";
-import { readDraft, readQuote, submitOrder } from "@/lib/rail-api";
+import { addressFor, signerFor, type SignerKind } from "@/lib/account/signer";
+import { readAvailable, readDraft, readQuote, submitOrder } from "@/lib/rail-api";
 
 export type Proposal = {
   draftId: string;
@@ -66,6 +66,39 @@ export async function loadProposal(draftId: string): Promise<Proposal> {
       attestor: quote.attestor as `0x${string}`,
     },
   };
+}
+
+export type Funds = {
+  available: number;
+  /** Dollars still needed. Zero when there is enough. */
+  short: number;
+};
+
+/**
+ * Whether there is enough to cover this, asked before anybody is asked to approve anything.
+ *
+ * Somebody who brings their own account is the common case now, and the common mistake is asking to
+ * send more than it holds. Without this they get as far as approving, and the failure arrives after
+ * the one moment they were sure about. Asked first, it is a number on the screen before they commit
+ * to anything.
+ *
+ * Returns undefined when the balance cannot be read at all. That is deliberately not treated as
+ * "no money": a connection problem must never tell somebody their account is empty, and the relayer
+ * checks again before it spends gas, so the worst case is the old behaviour rather than a lie.
+ */
+export async function checkFunds(
+  proposal: Proposal,
+  kind: SignerKind,
+): Promise<Funds | undefined> {
+  const address = addressFor(kind);
+  if (!address) return undefined;
+
+  try {
+    const available = await readAvailable(address);
+    return { available, short: Math.max(0, proposal.mostYouPay - available) };
+  } catch {
+    return undefined;
+  }
 }
 
 /**

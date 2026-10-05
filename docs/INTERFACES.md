@@ -302,7 +302,20 @@ All services: JSON over HTTPS, error envelope below, `GET /healthz → 200 {"ok"
 ```
 
 Error codes: `BAD_REQUEST` `UNAUTHORIZED` `NOT_FOUND` `QUOTE_EXPIRED` `ACCOUNT_NOT_RESOLVED`
-`COMMITMENT_MISMATCH` `SIMULATION_FAILED` `SUBMISSION_FAILED` `NOT_WINNER` `RATE_LIMITED` `INTERNAL`.
+`COMMITMENT_MISMATCH` `INSUFFICIENT_BALANCE` `SIMULATION_FAILED` `SUBMISSION_FAILED` `NOT_WINNER`
+`RATE_LIMITED` `INTERNAL`.
+
+`INSUFFICIENT_BALANCE` is the one error whose envelope carries data, because a sender needs the
+number to act on it:
+
+```json
+{ "error": { "code": "INSUFFICIENT_BALANCE", "message": "…", "data": { "required": "37650000", "available": "20000000" } } }
+```
+
+Both are decimal strings of AUSD units, as elsewhere in this document — a `bigint` does not survive
+`JSON.stringify`, and a `number` loses precision above 2^53. It is distinct from
+`SIMULATION_FAILED`, which it would otherwise be a subset of, for one reason: "you need $17.65 more"
+is something a person can fix, and "this transfer would not go through" is not.
 
 ### 5.1 `rail-relayer` (TypeScript · Node + viem)
 
@@ -327,7 +340,8 @@ protects the 🔑bot endpoints; their shared secret is, because CORS only binds 
 | `POST /v1/contacts/forget` 🔑bot | `{ waId, contactId }` | Deletes that recipient. Scoped to the chat that owns it, so one chat cannot forget another's. Returns `{ forgotten: true }` |
 | `POST /v1/drafts` 🔑bot | `{ waId, contactId, currency, localAmount }` | `{ draftId, url }` — `url = https://<domain>/c/<draftId>`. 128-bit random id, expires in 15 min |
 | `GET /v1/drafts/:draftId` | — | `{ currency, localAmount, recipient: { bankCode, bankName, accountNumber, accountName } }` — the full number is shown only inside the PWA |
-| `POST /v1/orders` | `{ intent, authorization, recipient: { bankCode, accountNumber, accountName, salt } }` | `{ orderId, txHash }` |
+| `POST /v1/orders` | `{ intent, authorization, recipient: { bankCode, accountNumber, accountName, salt } }` | `{ orderId, txHash }`. Checks `balanceOf(intent.sender) ≥ maxAusd + fee` before simulating, so a short balance returns `INSUFFICIENT_BALANCE` with the shortfall rather than an opaque `SIMULATION_FAILED` |
+| `GET /v1/balance?address=0x…` | — | `{ address, balance }` — AUSD units as a decimal string. Lets the app tell a sender they are short *before* asking them to approve anything, without needing an RPC of its own |
 | `GET /v1/orders/:orderId` | — | `{ orderId, status, winner, winningBid, maxAusd, change, narration, blocks: {...}, txs: [...] }` |
 | `POST /v1/orders/:orderId/dispute` | `{ signature }` | `{ txHash }` |
 | `POST /v1/orders/:orderId/payout-details` | `{ lp, issuedAt, signature }` | `{ bankCode, bankName, accountNumber, accountName, currency, localAmount, narration }` |

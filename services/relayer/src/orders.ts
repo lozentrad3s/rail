@@ -21,6 +21,7 @@ import { RelayerError } from "./errors.ts";
 import type { SubmissionQueue } from "./nonce.ts";
 import { commitmentFor, type Recipient, type RecipientStore } from "./recipients.ts";
 import {
+  ausdAbi,
   CREATE_ORDER_GAS,
   currencyFromBytes3,
   railCoreAbi,
@@ -101,6 +102,29 @@ export async function createOrder(deps: OrderDeps, body: unknown): Promise<{ ord
     throw new RelayerError("QUOTE_EXPIRED", "This quote has expired. Please get a new one.");
   }
 
+  /**
+   * Checked separately from the simulation, which would also catch it.
+   *
+   * It is the single most likely reason a transfer cannot go through — somebody linked an account
+   * and asked to send more than it holds — and as a simulation revert it arrives as "this transfer
+   * would not go through", which tells them nothing they can act on. Read once and named, it
+   * becomes "you need $17.65 more", which they can fix.
+   */
+  const required = intent.maxAusd + intent.fee;
+  const available = await publicClient.readContract({
+    address: config.ausd,
+    abi: ausdAbi,
+    functionName: "balanceOf",
+    args: [intent.sender],
+  });
+  if (available < required) {
+    throw new RelayerError(
+      "INSUFFICIENT_BALANCE",
+      "There isn't enough in that account to cover this transfer.",
+      { data: { required: required.toString(), available: available.toString() } },
+    );
+  }
+
   // Simulate before spending gas: a revert here is the sender's problem to see, not a failed
   // transaction they paid for.
   try {
@@ -140,6 +164,36 @@ export async function createOrder(deps: OrderDeps, body: unknown): Promise<{ ord
   // Returned without waiting for inclusion: the app polls the order, and a slow block should not
   // look like a failure to the sender.
   return { orderId, txHash };
+}
+
+/**
+ * What an account holds, so the app can say so before anybody approves anything.
+ *
+ * Read here rather than in the browser because the app has no RPC of its own worth relying on — the
+ * public endpoint rate-limits and caps log scans, and a dashboard that silently reads nothing is
+ * worse than one that reads nothing loudly. Returned as a decimal string: `JSON.stringify` cannot
+ * serialise a `bigint`, and a `number` loses precision past about $9 billion.
+ */
+export async function readBalance(
+  deps: OrderDeps,
+  address: string,
+): Promise<{ address: Address; balance: string }> {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    throw new RelayerError("BAD_REQUEST", "address must be a 20-byte hex string.");
+  }
+
+  const balance = await deps.publicClient
+    .readContract({
+      address: deps.config.ausd,
+      abi: ausdAbi,
+      functionName: "balanceOf",
+      args: [address as Address],
+    })
+    .catch((cause: unknown) => {
+      throw new RelayerError("INTERNAL", "Could not read that balance right now.", { cause });
+    });
+
+  return { address: address as Address, balance: balance.toString() };
 }
 
 export async function readOrder(deps: OrderDeps, orderId: Hex) {

@@ -12,6 +12,7 @@ export const ERROR_CODES = [
   "QUOTE_EXPIRED",
   "ACCOUNT_NOT_RESOLVED",
   "COMMITMENT_MISMATCH",
+  "INSUFFICIENT_BALANCE",
   "SIMULATION_FAILED",
   "SUBMISSION_FAILED",
   "NOT_WINNER",
@@ -28,6 +29,7 @@ const STATUS: Record<ErrorCode, number> = {
   QUOTE_EXPIRED: 410,
   ACCOUNT_NOT_RESOLVED: 422,
   COMMITMENT_MISMATCH: 422,
+  INSUFFICIENT_BALANCE: 422,
   SIMULATION_FAILED: 422,
   SUBMISSION_FAILED: 502,
   NOT_WINNER: 403,
@@ -35,20 +37,37 @@ const STATUS: Record<ErrorCode, number> = {
   INTERNAL: 500,
 };
 
+/**
+ * Extra fields on the envelope, for the one error where a message is not enough.
+ *
+ * Deliberately not a free-for-all: only `INSUFFICIENT_BALANCE` uses it, because "you are short
+ * $17.65" needs the number and nothing else here does. Values are strings, since a `bigint` cannot
+ * be serialised and a `number` would round somebody's balance.
+ */
+export type ErrorData = Record<string, string>;
+
 export class RelayerError extends Error {
   readonly code: ErrorCode;
   readonly status: number;
+  readonly data?: ErrorData | undefined;
 
-  constructor(code: ErrorCode, message: string, options?: { cause?: unknown }) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    options?: { cause?: unknown; data?: ErrorData },
+  ) {
     super(message, options);
     this.name = "RelayerError";
     this.code = code;
     this.status = STATUS[code];
+    this.data = options?.data;
   }
 
-  /** The wire shape: `{ error: { code, message } }`. */
-  toJSON(): { error: { code: ErrorCode; message: string } } {
-    return { error: { code: this.code, message: this.message } };
+  /** The wire shape: `{ error: { code, message } }`, plus `data` where §5 defines it. */
+  toJSON(): { error: { code: ErrorCode; message: string; data?: ErrorData } } {
+    return {
+      error: { code: this.code, message: this.message, ...(this.data ? { data: this.data } : {}) },
+    };
   }
 }
 
