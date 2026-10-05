@@ -6,7 +6,7 @@ sealed-bid auction to deliver it, and whatever they do not take comes back to th
 
 Written for: judges, and anyone picking this repo up cold.
 
-Last updated 4 October 2026. 53 commits since 16 September.
+Last updated 5 October 2026. 59 commits since 16 September.
 
 ---
 
@@ -90,14 +90,14 @@ the architecture looks the way it does.
 | Part | Stack | Tests |
 |---|---|---|
 | `contracts/` | Solidity 0.8.26, Foundry, OpenZeppelin v5 | **47**, 32 adversarial |
-| `services/relayer/` | TypeScript, Node type-stripping, viem | **65** |
+| `services/relayer/` | TypeScript, Node type-stripping, viem | **72** |
 | `services/matcher/` | TypeScript, provider bidding bot | **12** |
 | `bot/` | TypeScript, Telegram + WhatsApp transports | **89** |
 | `web/` | Next.js 16, React 19, Tailwind 4, Motion | e2e via Chrome + WebAuthn |
 | `cre/` | Chainlink CRE workflow, TypeScript SDK | **15** |
 | `indexer/` | Envio HyperIndex | signature check |
 
-**228 automated tests.** No part of the money path is untested.
+**235 automated tests.** No part of the money path is untested.
 
 ### Contracts
 
@@ -115,7 +115,9 @@ that reverts or burns gas or returns megabytes.
 ### Services
 
 The relayer quotes, submits, and holds recipient bank details encrypted at rest. It holds MON for
-gas and **nothing else**. The matcher is the provider bot: it watches for orders over a WebSocket,
+gas and **nothing else**. It reads the sender's balance before it simulates anything, so somebody
+who is short is told *"you need $17.65 more"* before they approve, not *"this would not go
+through"* after. The matcher is the provider bot: it watches for orders over a WebSocket,
 prices them, bids, reveals, collects the account number and confirms payment.
 
 ### The chat bot
@@ -149,7 +151,7 @@ nowhere, discovered at the worst possible moment.
 
 ### Mera — passkeys
 
-The entire account layer. `createPasskeyWithPrfOutput` → PRF output → BIP-39 → HDKey
+The account layer for somebody who has never held crypto. `createPasskeyWithPrfOutput` → PRF output → BIP-39 → HDKey
 `m/44'/60'/0'/0/{index}` → secp256k1 → a viem account that signs EIP-712. **No private key is ever
 stored**; the signing session is ended immediately in every path including failure.
 
@@ -157,6 +159,12 @@ stored**; the signing session is ended immediately in every path including failu
 derived from the *same* PRF output with no second passkey and no second prompt. An e2e test with a
 Chrome virtual authenticator asserts the derivation is deterministic, because if it ever stops being
 so, people lose access to their money.
+
+**The second door.** Somebody who already has an EVM wallet can connect it at `/connect` instead.
+Wallets are discovered through EIP-6963, not `window.ethereum`: with several extensions installed
+they overwrite each other on that one global, and the loser can resolve to a proxy that never
+answers. Either way the key is the sender's own and the bot has never held it, which is all
+invariant 2 asks. The passkey path stays, because a person with no wallet is the entire point.
 
 ### Chainlink CRE
 
@@ -225,7 +233,8 @@ happened and what was measured to justify it.
 ### Trying it
 
 **As a sender:** open the chat, `add mum`, choose **Test Bank (test mode only)** and any account
-number, then `send 50k to mum` and approve on your phone.
+number, then `send 50k to mum` and approve on your phone. Already have a wallet? Approve with it
+instead: the app offers both.
 
 **As a provider:** `/provider`, connect a wallet, stake at least $100, and bid inside the 45-second
 commit window.
