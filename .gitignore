@@ -11,6 +11,10 @@ broadcast/**/dry-run/
 *.key
 keystore/
 
+# Relayer runtime data: encrypted recipients and links, never source
+.vault/
+recipients/
+
 # Rust
 target/
 
