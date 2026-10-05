@@ -47,11 +47,14 @@ coordinate. A project token has no such limit:
    echo "RAILWAY_TOKEN=<the token>" >> services/.env.railway.local
    ```
 
-3. From `services/`:
+3. From the repo root, deploying `services/` as the build root:
 
    ```bash
-   npx @railway/cli up --detach
+   railway up services --path-as-root --detach
    ```
+
+   The repo root is linked to the **Rail-pay** project and its relayer service. A bare `railway up`
+   uploads the whole repo, which has no single app to build, and fails.
 
 Then add a volume at `/data` and set the variables above in the dashboard. The health check at
 `/healthz` tells the platform whether the process is actually serving.
@@ -63,8 +66,11 @@ Point the app at it, so the links in chat reach a relayer that exists:
 ```bash
 cd web
 npx vercel env add NEXT_PUBLIC_RELAYER_URL production   # https://<your-service>.up.railway.app
-npx vercel --prod
 ```
+
+Then push to `main`. The Vercel project's Root Directory is `web`, so a push builds the app; an env
+change takes effect on the next build. Do not run `vercel --prod` from inside `web/` any more: with
+the Root Directory set, the CLI looks for `web/web` and the build fails.
 
 And set `ALLOWED_ORIGINS` on the relayer to the app's origin, or the browser will refuse every call
 with a CORS error that looks like a connection failure.
