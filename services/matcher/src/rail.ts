@@ -24,21 +24,8 @@ export const lpRegistryAbi = parseAbi([
   "function stake(uint256 amount)",
 ]);
 
-export const erc20Abi = parseAbi([
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function balanceOf(address account) view returns (uint256)",
-]);
-
 /** `Status` in the contract. Only the values this bot reasons about are named. */
 export const Status = { None: 0, Open: 1, Awarded: 2, Paid: 3, Disputed: 4, Settled: 5, Refunded: 6, Cancelled: 7 } as const;
-
-const STATUS_NAMES = [
-  "None", "Open", "Awarded", "Paid", "Disputed", "Settled", "Refunded", "Cancelled",
-] as const;
-
-export function statusName(value: number): string {
-  return STATUS_NAMES[value] ?? "Unknown";
-}
 
 /** ISO code from the on-chain `bytes3`, e.g. `NGN`. */
 export function currencyCode(raw: Hex): string {

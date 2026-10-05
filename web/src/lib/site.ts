@@ -74,9 +74,6 @@ export const corridors = [
   { to: "Brazil", currency: "BRL", region: "Americas", live: false },
 ] as const;
 
-export const liveCorridors = corridors.filter((corridor) => corridor.live);
-export const plannedCorridors = corridors.filter((corridor) => !corridor.live);
-
 /**
  * The auction's real shape, in one place.
  *
@@ -99,9 +96,6 @@ export const auction = {
   revealSeconds: Math.round((150 * BLOCK_MS) / 1000),
   totalSeconds: Math.round((300 * BLOCK_MS) / 1000),
 } as const;
-
-/** "about 90 seconds", for prose that should not hardcode a number. */
-export const auctionLength = `about ${auction.totalSeconds} seconds`;
 
 /** Illustrative figures used across the page. Kept in one place so every chapter agrees. */
 export const demo = {

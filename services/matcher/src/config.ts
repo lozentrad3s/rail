@@ -76,7 +76,7 @@ function bigNumber(key: string, fallback: bigint): bigint {
   }
 }
 
-export function loadConfig(env = process.env): Config {
+export function loadConfig(): Config {
   const spreadBps = bigNumber("SPREAD_BPS", 150n);
   const rpcUrl = required("RPC_URL");
   return {

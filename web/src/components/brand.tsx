@@ -37,15 +37,3 @@ export function RailMark({ className, tone = "auto" }: { className?: string; ton
     </svg>
   );
 }
-
-/** The full lockup, for places with room for the name. */
-export function RailLockup({ className, tone = "auto" }: { className?: string; tone?: "auto" | "night" | "paper" }) {
-  return (
-    <span className={`inline-flex items-center gap-2.5 ${className ?? ""}`}>
-      <RailMark className="size-7" tone={tone} />
-      <span className="text-[1.0625rem] font-semibold tracking-[-0.02em]">
-        Rail<span className="text-accent">-Pay</span>
-      </span>
-    </span>
-  );
-}
