@@ -3,13 +3,15 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowDownLeft, CircleAlert, Plus, RefreshCw, Send } from "lucide-react";
+import { ArrowDownLeft, ArrowRight, CircleAlert, Droplets, Landmark, Plus, RefreshCw, Send } from "lucide-react";
 import { Notice, Screen } from "./screen";
 import { AddMoney } from "./add-money";
 import { Dashboard } from "./dashboard";
 import { cn, usd } from "@/lib/format";
 import { spring } from "@/lib/motion";
 import { isPractice, readBalance } from "@/lib/account/chain";
+import { addPracticeMoney, ApiError } from "@/lib/rail-api";
+import { readStanding } from "@/lib/provider/registry";
 import {
   forgetLinked,
   linkedAddress,
@@ -50,6 +52,9 @@ export function AccountScreen() {
   const [reading, setReading] = useState(false);
   const [reload, setReload] = useState(0);
   const [confirmForget, setConfirmForget] = useState(false);
+  const [topping, setTopping] = useState(false);
+  const [topUpNote, setTopUpNote] = useState<string | null>(null);
+  const [isProvider, setIsProvider] = useState(false);
 
   const linked = useSyncExternalStore(
     subscribeLinked,
@@ -107,6 +112,55 @@ export function AccountScreen() {
     };
   }, [address, savingsAddress, reload]);
 
+  /**
+   * A linked account that has staked is a provider as well as a sender. It used to land here with no
+   * way to its provider screen, which from the inside looked like the provider screen did not exist.
+   */
+  useEffect(() => {
+    if (account || !linked) return;
+    let cancelled = false;
+    readStanding(linked)
+      .then((standing) => {
+        if (!cancelled) setIsProvider(standing.staked > 0n);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [account, linked]);
+
+  /**
+   * Practice money, on the test network only. A Face ID account starts with nothing and has no way
+   * to pay a fee, so without this a first-time visitor could look at the app and never use it.
+   */
+  const addPractice = async () => {
+    if (!address) return;
+    setTopping(true);
+    setTopUpNote(null);
+    const before = dollars ?? 0;
+    try {
+      await addPracticeMoney(address);
+      for (let attempt = 0; attempt < 12; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 1_500));
+        const { dollars: now } = await readBalance(address);
+        if (now > before) {
+          setDollars(now);
+          setTopUpNote(`${usd(now - before)} of practice money added.`);
+          return;
+        }
+      }
+      setTopUpNote("On its way. Tap refresh in a few seconds.");
+    } catch (error) {
+      setTopUpNote(
+        error instanceof ApiError && error.reason === "too-soon"
+          ? "Practice money was just added. You can add more in a minute."
+          : "Could not add practice money right now. Try again in a moment.",
+      );
+    } finally {
+      setTopping(false);
+    }
+  };
+
   if (!address) return null;
 
   return (
@@ -156,6 +210,40 @@ export function AccountScreen() {
             </p>
           </div>
         </section>
+
+        {isPractice ? (
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <button
+              type="button"
+              onClick={() => void addPractice()}
+              disabled={topping}
+              className={cn("btn btn-sm clay-press", dollars === 0 ? "btn-primary" : "btn-secondary-paper")}
+            >
+              <Droplets className="size-4" strokeWidth={2.2} aria-hidden="true" />
+              {topping ? "Adding…" : "Add $10,000 practice money"}
+            </button>
+            {topUpNote ? (
+              <p className="text-small text-ink-muted" role="status">
+                {topUpNote}
+              </p>
+            ) : dollars === 0 ? (
+              <p className="text-small text-ink-muted">Free during the pilot, so you can try a real transfer.</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {isProvider ? (
+          <a href="/provider" className="clay clay-press mt-3 flex items-center gap-3 px-5 py-4">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-accent shadow-[var(--clay-raise)]">
+              <Landmark className="size-5" strokeWidth={2.2} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">You are a provider too</span>
+              <span className="text-small block text-ink-muted">Open your provider dashboard</span>
+            </span>
+            <ArrowRight className="size-5 shrink-0 text-ink-muted" strokeWidth={2.2} aria-hidden="true" />
+          </a>
+        ) : null}
 
         {unreachable ? (
           <Notice icon={<CircleAlert className="size-4" strokeWidth={2.2} />} title="Can't reach your balance">

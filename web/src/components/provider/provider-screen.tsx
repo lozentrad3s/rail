@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatUnits, parseUnits, type Address, type Hex } from "viem";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CircleAlert, Copy, Check, Landmark, ShieldCheck, Wallet } from "lucide-react";
+import { CircleAlert, Copy, Check, Landmark, LogOut, ShieldCheck, Wallet } from "lucide-react";
 
 import { Assurance, Notice, Screen } from "@/components/sender/screen";
 import { spring } from "@/lib/motion";
+import { auction } from "@/lib/site";
 import { AUSD_DECIMALS, blocksToSeconds, client } from "@/lib/provider/chain";
 import {
   approveStake,
@@ -31,8 +32,9 @@ import {
   rememberBid,
   type Request,
 } from "@/lib/provider/requests";
-import { resumeWallet, walletClientFor, WalletError } from "@/lib/account/wallet";
+import { forgetWallet, resumeWallet, walletClientFor, WalletError } from "@/lib/account/wallet";
 import { WalletPicker } from "@/components/connect/wallet-picker";
+import { WalletBalances, type Holdings } from "@/components/connect/wallet-balances";
 
 /**
  * The provider's page.
@@ -65,6 +67,12 @@ type PayoutDetails = {
   narration: string;
 };
 
+/** The two EIP-1193 events this page follows. Every wallet emits them; viem's type omits `on`. */
+type WalletEvents = {
+  on?: (event: string, listener: (...args: unknown[]) => void) => void;
+  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+};
+
 const relayerBase = (process.env.NEXT_PUBLIC_RELAYER_URL || "http://localhost:8787").replace(/\/+$/, "");
 
 export function ProviderScreen() {
@@ -78,6 +86,7 @@ export function ProviderScreen() {
   const [problem, setProblem] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
+  const [holdings, setHoldings] = useState<Holdings | null>(null);
   const [stakeInput, setStakeInput] = useState("200");
   const [bidInputs, setBidInputs] = useState<Record<string, string>>({});
   const [details, setDetails] = useState<Record<string, PayoutDetails>>({});
@@ -103,6 +112,42 @@ export function ProviderScreen() {
       void refresh(wallet.address);
     });
   }, [refresh]);
+
+  /**
+   * Follow the wallet rather than a snapshot of it. Switching account in Zerion or MetaMask used to
+   * leave this page bidding as the old address until a reload.
+   */
+  useEffect(() => {
+    if (!lp) return;
+    let detach: (() => void) | undefined;
+    let cancelled = false;
+    void resumeWallet().then((wallet) => {
+      const provider = wallet?.provider as unknown as WalletEvents | undefined;
+      if (cancelled || !provider?.on) return;
+      const onAccounts = (...args: unknown[]) => {
+        const next = (args[0] as string[] | undefined)?.[0] as Address | undefined;
+        if (!next) {
+          forgetWallet();
+          setLp(null);
+          return;
+        }
+        setLp(next);
+        setStanding(null);
+        void refresh(next);
+      };
+      const onChain = () => void refresh(lp);
+      provider.on("accountsChanged", onAccounts);
+      provider.on("chainChanged", onChain);
+      detach = () => {
+        provider.removeListener?.("accountsChanged", onAccounts);
+        provider.removeListener?.("chainChanged", onChain);
+      };
+    });
+    return () => {
+      cancelled = true;
+      detach?.();
+    };
+  }, [lp, refresh]);
 
   // Requests expire in blocks, so the list is stale within seconds of arriving.
   useEffect(() => {
@@ -236,6 +281,17 @@ export function ProviderScreen() {
 
   const awaitingReveal = lp ? pendingReveals(lp) : [];
 
+  /**
+   * Where this provider is in onboarding. Derived from the chain every time, never stored: a step is
+   * done because the wallet shows it done, not because a button was pressed on this device.
+   */
+  const minStake = standing?.minStake ?? 100_000_000n;
+  const staked = standing?.eligible === true;
+  const funded =
+    staked ||
+    (holdings !== null && holdings.monWei > 0n && holdings.ausdUnits + (standing?.staked ?? 0n) >= minStake);
+  const step: 1 | 2 | 3 | 4 = !lp ? 1 : !funded ? 2 : !staked ? 3 : 4;
+
   if (!lp) {
     return (
       <Screen>
@@ -268,7 +324,9 @@ export function ProviderScreen() {
               </dd>
             </div>
           </dl>
-          <div className="mt-9">
+          <Steps current={1} />
+
+          <div className="mt-7">
             <WalletPicker
               busy={busy !== null}
               label="Connect wallet"
@@ -294,6 +352,10 @@ export function ProviderScreen() {
             <Assurance icon={<Landmark className="size-[18px]" strokeWidth={2} />}>
               You pay from your own bank, on your own licence. Rail never touches naira.
             </Assurance>
+            <Assurance icon={<Wallet className="size-[18px]" strokeWidth={2} />}>
+              Your wallet will ask to switch to Monad Testnet, and to add it if it has not seen it
+              before. That is expected during the pilot: it is where the test dollars live.
+            </Assurance>
           </ul>
 
           {problem ? (
@@ -309,10 +371,45 @@ export function ProviderScreen() {
   return (
     <Screen>
       <div className="flex flex-1 flex-col py-10">
-        <h1 className="text-h2">Provider</h1>
-        <p className="text-small mt-1.5 font-mono text-ink-muted">
-          {lp.slice(0, 6)}...{lp.slice(-4)}
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-h2">Provider</h1>
+            <p className="text-small mt-1.5 font-mono text-ink-muted">
+              {lp.slice(0, 6)}...{lp.slice(-4)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              forgetWallet();
+              setLp(null);
+              setStanding(null);
+              setHoldings(null);
+            }}
+            className="btn btn-sm btn-secondary-paper clay-press"
+          >
+            <LogOut className="size-4" strokeWidth={2.2} aria-hidden="true" />
+            Disconnect
+          </button>
+        </div>
+
+        <Steps current={step} />
+
+        {step < 4 ? (
+          <div className="clay mt-6 p-5">
+            <p className="text-label text-accent">Step {step} of 4</p>
+            <p className="mt-1.5 font-semibold">
+              {step === 2 ? "Fund your wallet" : `Stake at least ${usd(minStake)}`}
+            </p>
+            <p className="text-small mt-1.5 text-ink-muted">
+              {step === 2
+                ? `You need at least ${usd(minStake)} in AUSD to stake, and a little MON for network fees. Both are free on the test network: use the buttons below.`
+                : "Stake is your collateral. It locks only while you lead an auction, and unlocks the moment your payment is proven. Walking away from a win costs more than delivering it, which is why a stranger can trust you."}
+            </p>
+          </div>
+        ) : null}
+
+        <WalletBalances address={lp} needsGas onChange={setHoldings} />
 
         {!storageWorks ? (
           <Notice icon={<CircleAlert className="size-4" strokeWidth={2.2} />} title="Bidding is disabled here">
@@ -394,6 +491,14 @@ export function ProviderScreen() {
         ) : null}
 
         <h2 className="text-h3 mt-10">Open requests</h2>
+        {!staked ? (
+          <p className="text-small mt-2 text-ink-muted">
+            You can watch requests now; bidding opens once you have staked. Each one runs the same way:
+            seal a price while bids are open, reveal it when reveals open, and if yours is lowest the
+            recipient&apos;s account appears here. Pay it from your bank with the reference shown,
+            tap &ldquo;I have paid&rdquo;, and your bid lands in this wallet.
+          </p>
+        ) : null}
         {requests === null ? (
           <p className="text-small mt-3 text-ink-muted" role="status">
             Reading the chain...
@@ -402,7 +507,8 @@ export function ProviderScreen() {
           <div className="clay mt-3 p-5">
             <p className="text-body">Nothing open right now.</p>
             <p className="text-small mt-1.5 text-ink-muted">
-              This list refreshes every few seconds. A request stays biddable for about half a minute.
+              This list refreshes every few seconds. Sealed bids stay open for about{" "}
+              {auction.commitSeconds} seconds, then reveals for another {auction.revealSeconds}.
             </p>
           </div>
         ) : (
@@ -557,5 +663,32 @@ export function ProviderScreen() {
         {note ? <p className="text-small mt-4 text-accent">{note}</p> : null}
       </div>
     </Screen>
+  );
+}
+
+const STEPS = ["Connect", "Fund", "Stake", "Bid"] as const;
+
+/** Four steps, the same four every provider takes, in the order the protocol needs them. */
+function Steps({ current }: { current: 1 | 2 | 3 | 4 }) {
+  return (
+    <ol className="mt-7 grid grid-cols-4 gap-2" aria-label="Getting started">
+      {STEPS.map((label, index) => {
+        const n = index + 1;
+        const done = n < current;
+        const now = n === current;
+        return (
+          <li key={label} aria-current={now ? "step" : undefined} className="grid gap-1.5">
+            <span
+              className={`h-1.5 rounded-full ${done ? "bg-accent" : now ? "bg-accent/50" : "bg-line"}`}
+              aria-hidden="true"
+            />
+            <span className={`text-small ${now ? "font-semibold text-ink" : "text-ink-muted"}`}>
+              {done ? <Check className="mr-1 inline size-3.5 text-accent" strokeWidth={2.6} aria-hidden="true" /> : null}
+              {label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

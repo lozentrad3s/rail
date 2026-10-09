@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, CircleAlert, Coins, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowRight, Check, CircleAlert, Coins, Landmark, ShieldCheck, Wallet } from "lucide-react";
 import type { Address } from "viem";
 
 import { Assurance, Notice, Screen } from "@/components/sender/screen";
 import { WalletPicker } from "@/components/connect/wallet-picker";
-import { usd } from "@/lib/format";
+import { WalletBalances } from "@/components/connect/wallet-balances";
 import { spring } from "@/lib/motion";
-import { readBalance } from "@/lib/account/chain";
 import {
   forgetWallet,
   resumeWallet,
@@ -57,7 +56,6 @@ export function ConnectWalletScreen() {
   const reduce = useReducedMotion();
 
   const [address, setAddress] = useState<Address | null>(null);
-  const [dollars, setDollars] = useState<number | null>(null);
   const [failure, setFailure] = useState<WalletFailure | null>(null);
 
   // Reconnect without prompting if this browser already granted access.
@@ -67,26 +65,9 @@ export function ConnectWalletScreen() {
     });
   }, []);
 
-  // The balance is what makes the connection feel real, so read it as soon as there is an address.
-  useEffect(() => {
-    if (!address) return;
-    let cancelled = false;
-    readBalance(address)
-      .then((balance) => {
-        if (!cancelled) setDollars(balance.dollars);
-      })
-      .catch(() => {
-        if (!cancelled) setDollars(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [address]);
-
   const disconnect = () => {
     forgetWallet();
     setAddress(null);
-    setDollars(null);
   };
 
   return (
@@ -114,28 +95,53 @@ export function ConnectWalletScreen() {
               </span>
               <h1 className="text-h2 mt-6">Connected.</h1>
 
-              <div className="clay mt-7 p-4">
-                <p className="text-small text-ink-muted">Your wallet</p>
-                <p className="mt-0.5 font-mono text-[1.0625rem] font-semibold">{short(address)}</p>
-                <p className="text-small mt-3 text-ink-muted">Available to send</p>
-                <p className="text-h3 mt-0.5 tabular-nums">
-                  {dollars === null ? "$-.--" : usd(dollars)}
-                </p>
-              </div>
+              <p className="text-small mt-2 font-mono text-ink-muted">{short(address)}</p>
+
+              <WalletBalances address={address} needsGas={false} />
 
               <p className="text-lead mt-6 text-ink-muted">
-                Nothing has moved, and nothing will until you approve a transfer. Rail asks your
-                wallet to sign one authorisation per transfer, for exactly that transfer.
+                Nothing has moved, and nothing will until you approve something. What would you like
+                to do?
               </p>
 
-              <button
-                type="button"
-                onClick={() => router.push("/account")}
-                className="btn btn-primary mt-8 w-full text-[1rem]"
-              >
-                Continue
-              </button>
-              <button type="button" onClick={disconnect} className="btn btn-secondary-paper mt-3 w-full">
+              {/*
+               * Two different people arrive here with a wallet, and they want different screens. A
+               * provider used to land on the sender dashboard with no way to the provider one.
+               */}
+              <div className="mt-6 grid gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push("/account")}
+                  className="clay clay-press flex w-full items-center gap-3 p-4 text-left"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-white">
+                    <ArrowRight className="size-5" strokeWidth={2.4} aria-hidden="true" />
+                  </span>
+                  <span>
+                    <span className="block font-semibold">Send money home</span>
+                    <span className="text-small block text-ink-muted">
+                      One signature per transfer, for exactly that transfer.
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/provider")}
+                  className="clay clay-press flex w-full items-center gap-3 p-4 text-left"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-accent shadow-[var(--clay-raise)]">
+                    <Landmark className="size-5" strokeWidth={2.2} aria-hidden="true" />
+                  </span>
+                  <span>
+                    <span className="block font-semibold">Become a provider</span>
+                    <span className="text-small block text-ink-muted">
+                      Stake, bid on transfers, pay out from your bank, earn your bid.
+                    </span>
+                  </span>
+                </button>
+              </div>
+
+              <button type="button" onClick={disconnect} className="btn btn-secondary-paper mt-6 w-full">
                 Disconnect
               </button>
             </motion.div>
@@ -184,6 +190,11 @@ export function ConnectWalletScreen() {
                 <Assurance icon={<ShieldCheck className="size-[18px]" strokeWidth={2} />}>
                   Rail never asks for a seed phrase and never asks to send a transaction. It asks for
                   one signature, for one transfer, at the moment you approve it.
+                </Assurance>
+                <Assurance icon={<Wallet className="size-[18px]" strokeWidth={2} />}>
+                  Your wallet will ask to switch to Monad Testnet, and to add it if it has not seen it
+                  before. That is expected during the pilot: Rail runs on the test network with test
+                  dollars.
                 </Assurance>
                 <Assurance icon={<Coins className="size-[18px]" strokeWidth={2} />}>
                   The authorisation covers the most a transfer can cost. Whatever the auction saves

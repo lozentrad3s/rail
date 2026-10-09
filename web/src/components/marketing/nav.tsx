@@ -75,6 +75,16 @@ export function Nav() {
            * The way into the app itself. /account sends anyone without an account to /start, so one
            * link serves both the returning sender and the first-time one.
            */}
+          {/* The chapter links hide below lg, and "For providers" went with them. */}
+          <a
+            href="/provider"
+            className={cn(
+              "text-small hidden rounded-lg px-3 py-2 transition-colors duration-150 sm:inline-block lg:hidden",
+              night ? "text-night-muted hover:text-night-text" : "text-ink-muted hover:text-ink",
+            )}
+          >
+            Providers
+          </a>
           <a
             href="/account"
             className={cn(

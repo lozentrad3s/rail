@@ -14,6 +14,7 @@ export type ApiFailure =
   | "account-not-found"
   | "not-configured"
   | "short"
+  | "too-soon"
   | "unknown";
 
 export class ApiError extends Error {
@@ -82,6 +83,9 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown })
         required: toDollars(error?.data?.required),
         available: toDollars(error?.data?.available),
       });
+    }
+    if (code === "RATE_LIMITED") {
+      throw new ApiError("too-soon", error?.message ?? "That was just done. Try again in a minute.");
     }
     if (code === "ACCOUNT_NOT_RESOLVED") {
       // The relayer says this either when the bank cannot find the account, or when name checking
@@ -198,6 +202,15 @@ export async function readAvailable(address: string): Promise<number> {
     `/v1/balance?address=${encodeURIComponent(address)}`,
   );
   return toDollars(balance);
+}
+
+/**
+ * Practice money, on the test network only: the relayer asks the public test faucet to send
+ * $10,000 to this account and pays the fee itself, so an account holding nothing can still try a
+ * transfer. On a real network the relayer refuses.
+ */
+export function addPracticeMoney(address: string): Promise<{ txHash: string }> {
+  return call("/v1/practice-dollars", { method: "POST", body: { address } });
 }
 
 /** Hands over what the passkey already signed. The relayer pays the fee and can alter nothing. */

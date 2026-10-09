@@ -125,6 +125,14 @@ export function StartScreen() {
           </button>
         </div>
 
+        {/* Providers are a different person with a different screen; this is not their sign-up. */}
+        <a
+          href="/provider"
+          className="text-small press mt-5 self-center rounded-lg px-2 py-1 text-ink-muted underline decoration-line underline-offset-4"
+        >
+          Here to deliver naira and earn? Become a provider
+        </a>
+
         <AnimatePresence>
           {failure ? (
             <motion.div
