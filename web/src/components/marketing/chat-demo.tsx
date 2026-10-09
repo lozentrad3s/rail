@@ -146,7 +146,7 @@ export function ChatDemo() {
               {current >= STEP.delivered && (
                 <Bubble key="delivered" side="in" wide>
                   <p className="flex items-center gap-1.5 text-[0.875rem] font-semibold text-money-text">
-                    <CircleCheck className="size-4" strokeWidth={2.4} /> Delivered in {demo.deliveredSeconds}s
+                    <CircleCheck className="size-4" strokeWidth={2.4} /> Delivered in {demo.deliveredLabel}
                   </p>
                   <p className="mt-1 text-[0.8125rem] leading-snug text-ink">
                     {demo.recipientFirstName}’s {demo.bank} account received {ngn(demo.localAmount)}. You paid{" "}

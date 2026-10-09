@@ -35,6 +35,15 @@ export function Safety() {
               Rail doesn’t touch naira. It can’t. The winning provider pays from their own bank. Until the payment
               is proven, your dollars stay locked in an open contract, with the provider’s stake locked beside them.
             </p>
+            {/*
+              * Precise on purpose. Rail does not promise that nothing can go wrong; it changes who
+              * carries the risk. Saying "guaranteed" would be a claim the mechanism does not make.
+              */}
+            <p className="mt-4 max-w-[34rem] text-body text-ink-muted">
+              That is not a promise that nothing can go wrong. It is a different trust model: instead of trusting a
+              provider you have never heard of, you rely on collateral, escrow and settlement anyone can check. A
+              provider that fails to deliver loses more than it could have taken, and that stake comes to you.
+            </p>
             <p className="mt-4 max-w-[34rem] text-body text-ink-muted">
               Flip the switch to see both endings.
             </p>

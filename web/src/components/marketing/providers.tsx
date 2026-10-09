@@ -22,6 +22,15 @@ export function Providers() {
             Licensed companies and individuals bid in the same auction, under the same rules. No brand, no balance
             sheet, no permission needed. Just stake, and a bank account you already use.
           </p>
+          {/*
+            * The honest state of supply. An auction with nobody in it is just a slow refund, so the
+            * page says who is bidding today rather than implying a crowd.
+            */}
+          <p className="mt-4 max-w-[34rem] text-body text-ink-muted">
+            <span className="font-semibold text-ink">On the pilot today:</span> two automated providers bid on every
+            transfer, with simulated bank payouts. The next milestone is the first five to ten real providers on the
+            Nigeria corridor. If nobody bids, the sender is refunded automatically.
+          </p>
           <div className="mt-9 flex flex-wrap gap-3">
             {/* A real page now, not a waiting list: staking is permissionless, so nothing gates it. */}
             <ButtonLink href="/provider" tone="paper">
