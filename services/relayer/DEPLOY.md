@@ -83,3 +83,20 @@ the Root Directory set, the CLI looks for `web/web` and the build fails.
 
 And set `ALLOWED_ORIGINS` on the relayer to the app's origin, or the browser will refuse every call
 with a CORS error that looks like a connection failure.
+
+## The provider bots
+
+The same image runs the reference provider (`rail-matcher`). Railway starts whatever
+`SERVICE_ENTRY` names, so a provider service sets `SERVICE_ENTRY=../matcher/src/index.ts` and the
+relayer leaves it unset. Each provider is its own service with its own key:
+
+| Variable | Value |
+|---|---|
+| `SERVICE_ENTRY` | `../matcher/src/index.ts` |
+| `LP_PRIVATE_KEY` | **secret** — a testnet LP key that is already staked |
+| `RPC_URL`, `RAIL_CORE`, `LP_REGISTRY` | as in docs/DEPLOYMENTS.md |
+| `RATE`, `SPREAD_BPS` | its own cost of naira and its margin; must sit inside the 2% reserve buffer |
+| `MAX_ORDER_AUSD` | under its free stake divided by 1.1, or a winning reveal cannot lock collateral |
+| `AUTO_CONFIRM_PAYOUT` | `true` on the testnet pilot: the payout is **simulated** and served at `/simulated-bank/credits` for the CRE attestor. Refused on any other chain |
+| `STATE_DIR` | `/data/matcher`, on a volume, so a restart mid-auction can still reveal |
+| `RAILWAY_RUN_UID` | `0`, for the same volume-ownership reason as the relayer |

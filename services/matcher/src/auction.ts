@@ -17,6 +17,7 @@ import {
 
 import type { Config } from "./config.ts";
 import type { PriceSource } from "./pricing.ts";
+import type { SimulatedBank } from "./bank.ts";
 import { currencyCode, railCoreAbi, Status } from "./rail.ts";
 import type { Store } from "./store.ts";
 import type { GasFunction, Sender } from "./tx.ts";
@@ -78,6 +79,11 @@ export type BidderDeps = {
    * make a five-block commit window. A pushed head makes every timing check free.
    */
   head: () => bigint;
+  /**
+   * Where a simulated payout is written when `autoConfirmPayout` is on. Absent, a win is only marked
+   * paid — which is what the tests exercise and what no hosted bot should ever do.
+   */
+  bank?: SimulatedBank | undefined;
   log?: (event: string, detail: Record<string, unknown>) => void;
 };
 
@@ -192,6 +198,19 @@ export class Bidder {
         note: "pay the recipient, then mark this order paid",
       });
       return { kind: "won", bid: order.winningBid, markedPaid: false };
+    }
+
+    // Testnet only, enforced at startup: write down the payout we would have made, labelled as
+    // simulated, before claiming it on-chain. The CRE attestor checks this record, not our word.
+    const credit = this.#deps.bank?.pay(event.orderId, currency, event.localAmount);
+    if (credit) {
+      this.log("simulated-payout", {
+        order: event.orderId,
+        narration: credit.narration,
+        amountMinor: credit.amountMinor,
+        currency,
+        note: "SIMULATED: no naira moved",
+      });
     }
 
     await this.send("markPaid", [event.orderId]);

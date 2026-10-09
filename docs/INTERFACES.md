@@ -414,6 +414,18 @@ Loop per `OrderCreated`: filter by currency, max size and **attestor allowlist**
 `payout-details`, `pay`, `markPaid`. Config via env: `LP_PRIVATE_KEY`, `RPC_URL`, `RAIL_CORE`,
 `CURRENCIES`, `SPREAD_BPS`, `MAX_ORDER_AUSD`, `ATTESTOR_ALLOWLIST`, `RELAYER_URL`.
 
+**Simulated payout (testnet only).** `AUTO_CONFIRM_PAYOUT=true` replaces the bank transfer with a
+**simulated** one: on a win the matcher records a credit `{ reference: "SIM-…", narration, amountMinor,
+currency, status: "successful", simulated: true }` and then calls `markPaid`. It refuses to start
+this way on any chain but 10143. No naira moves; every surface that shows it must say so.
+
+When `PORT` is set the matcher serves HTTP:
+
+| Endpoint | Returns |
+|---|---|
+| `GET /healthz` | `{ ok, lp, label, headAgeMs, simulatedPayout }` — `ok` is false once the head is stale |
+| `GET /simulated-bank/credits?narration=RAIL…&currency=NGN` | `{ simulated: true, credits: [...] }` — the same shape as `cre/mock-bank`, so the CRE payout-attestor can check a simulated payout exactly as it would a real feed |
+
 ### 5.4 `bot` — the chat front door
 
 One brain, two transports. `handle.ts`, `commands.ts`, `amounts.ts` and `messages/` know nothing

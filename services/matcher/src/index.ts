@@ -25,6 +25,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { monadTestnet } from "viem/chains";
 
 import { Bidder, type OrderCreated } from "./auction.ts";
+import { SimulatedBank } from "./bank.ts";
+import { serveHttp } from "./http.ts";
 import { loadConfig } from "./config.ts";
 import { StaticRate } from "./pricing.ts";
 import { lpRegistryAbi, railCoreAbi } from "./rail.ts";
@@ -83,6 +85,15 @@ async function main(): Promise<void> {
     contract: config.railCore,
   });
 
+  /**
+   * A simulated payout is a testnet thing only. On a real chain "auto confirm" would be a provider
+   * claiming payments it never made, so the bot refuses to start that way rather than warn.
+   */
+  if (config.autoConfirmPayout && monadTestnet.id !== (await publicClient.getChainId())) {
+    throw new Error("AUTO_CONFIRM_PAYOUT is testnet-only: it simulates the bank transfer");
+  }
+  const bank = config.autoConfirmPayout ? new SimulatedBank(config.stateDir) : undefined;
+
   // The head is pushed, not polled: asking the RPC costs ~250ms, which is most of a Monad block,
   // and the first live runs missed the commit window by exactly one block because of it.
   let head = 0n;
@@ -97,9 +108,28 @@ async function main(): Promise<void> {
     sender,
     head: () => head,
     log,
+    bank,
   });
 
-  log("starting", { lp: account.address, label: config.label, core: config.railCore });
+  log("starting", {
+    lp: account.address,
+    label: config.label,
+    core: config.railCore,
+    payout: bank ? "SIMULATED" : "manual",
+  });
+
+  // Up before the eligibility checks, so a platform health check sees the process while it boots.
+  let lastHeadAt = Date.now();
+  const port = Number(process.env.PORT ?? 0);
+  if (port > 0) {
+    serveHttp(port, {
+      lp: account.address,
+      label: config.label,
+      headAgeMs: () => Date.now() - lastHeadAt,
+      bank,
+    });
+    log("http", { port });
+  }
 
   // Two checks before risking a provider's collateral.
   await bidder.verifyCommitmentScheme();
@@ -160,7 +190,6 @@ async function main(): Promise<void> {
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
 
-  let lastHeadAt = Date.now();
   const onHead = (block: bigint): void => {
     head = block;
     lastHeadAt = Date.now();
