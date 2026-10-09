@@ -41,6 +41,9 @@ USER node
 ENV PORT=8787
 EXPOSE 8787
 
-# No shell form, so signals are not swallowed by an intermediate shell.
+# One image, two processes: SERVICE_ENTRY picks which (unset is the relayer; the provider bots set
+# ../matcher/src/index.ts). The shell is only there to read the variable — `exec` replaces it with
+# node, so tini's signals still reach the process. railway.json sets no start command on purpose:
+# Railway does not expand variables in one.
 WORKDIR /app/relayer
-CMD ["node", "src/index.ts"]
+CMD ["sh", "-c", "exec node ${SERVICE_ENTRY:-src/index.ts}"]
