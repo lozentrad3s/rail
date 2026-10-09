@@ -9,7 +9,7 @@
 import { describe, expect } from "bun:test";
 import { newTestRuntime, test } from "@chainlink/cre-sdk/test";
 
-import { initWorkflow, matchCredit, type Config, type Credit } from "./main";
+import { initWorkflow, matchCredit, type Config, type Credit } from "./workflow";
 
 /** ₦50,000 in kobo. */
 const OWED = "5000000";
