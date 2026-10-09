@@ -108,9 +108,9 @@ cent of the saving**, which is invariant 5 holding on a live chain rather than i
 [Envio Cloud](https://envio.dev), indexer `rail`, development tier, built from `main` with root
 directory `indexer`. Public GraphQL:
 
-```
-https://indexer.dev.hyperindex.xyz/a353dde/v1/graphql
-```
+Read by the sender dashboard (history by sender, on every device) and by the relayer's sweeper.
+The current URL is whatever `envio-cloud deployment endpoint` prints; the one from 20 September
+(`a353dde`) is gone.
 
 **The development tier gives each deployment its own endpoint**, so this URL changes every time we
 push. Get the current one with `envio-cloud deployment endpoint` rather than trusting a URL written

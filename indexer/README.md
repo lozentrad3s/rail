@@ -38,7 +38,8 @@ index nothing, forever.
 
 ## Deployed
 
-**Live GraphQL endpoint:** https://indexer.dev.hyperindex.xyz/a353dde/v1/graphql
+**Live GraphQL endpoint:** `envio-cloud deployment endpoint rail <commit> lozentrad3s` — the URL
+changes on every deployment, so it is not written down here.
 
 On the development tier every deployment gets its own endpoint, so this URL changes on each push.
 `envio-cloud deployment endpoint` prints the current one; anything reading it in production should
@@ -61,6 +62,14 @@ envio-cloud deployment endpoint         # the GraphQL URL the app reads
 
 The CLI authenticates through the GitHub CLI, so `envio-cloud login` needs no browser once `gh auth`
 is set up.
+
+**The development tier holds three deployments, and a push past that builds nothing, silently.**
+From 4 to 9 October every push to `main` was ignored because all three slots were full, and the
+newest live deployment was five days from the 7-day inactivity deletion. Before pushing, check
+`envio-cloud indexer get rail` and delete the oldest with
+`envio-cloud deployment delete rail <commit> lozentrad3s --yes`, keeping the one the app reads until
+its replacement has synced. Then point `NEXT_PUBLIC_INDEXER_URL` (Vercel) and `INDEXER_URL` (relayer)
+at the new endpoint.
 
 **A build is triggered by a push to `main`.** Envio only knows commits it received by webhook, so a
 commit made before the indexer existed cannot be deployed by hash — push a new one instead.
