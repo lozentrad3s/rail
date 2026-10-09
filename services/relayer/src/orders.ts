@@ -44,6 +44,8 @@ export type OrderDeps = {
   config: Config;
   recipients: RecipientStore;
   queue: SubmissionQueue;
+  /** Told about every submitted order, so a no-bid auction is refunded without anyone asking. */
+  onSubmitted?: (orderId: Hex) => void;
 };
 
 /**
@@ -160,6 +162,8 @@ export async function createOrder(deps: OrderDeps, body: unknown): Promise<{ ord
     console.error(`${new Date().toISOString()} submission-failed order=${orderId}`, cause);
     throw new RelayerError("SUBMISSION_FAILED", "Could not submit the transfer. Try again.", { cause });
   });
+
+  deps.onSubmitted?.(orderId);
 
   // Returned without waiting for inclusion: the app polls the order, and a slow block should not
   // look like a failure to the sender.

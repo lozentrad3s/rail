@@ -9,6 +9,10 @@ export const railCoreAbi = parseAbi([
   "function hashIntent(OrderIntent intent) view returns (bytes32)",
   "function getOrder(bytes32 orderId) view returns (Order)",
   "function dispute(bytes32 orderId, bytes signature)",
+  "function refund(bytes32 orderId)",
+  "function finalize(bytes32 orderId)",
+  "function canRefund(bytes32 orderId) view returns (bool)",
+  "function canFinalize(bytes32 orderId) view returns (bool)",
 ]);
 
 /** The one thing the relayer asks the asset itself: has the sender got it. */

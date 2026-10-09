@@ -13,7 +13,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { monadTestnet } from "viem/chains";
 
 import { createAccountLink, getLinkedAccount, linkAccount } from "./accounts.ts";
-import { loadConfig } from "./config.ts";
+import { dataDir, loadConfig } from "./config.ts";
 import { createContactLink, forgetContact, listContacts, saveContact } from "./contacts.ts";
 import { createDraft, readDraft } from "./drafts.ts";
 import { RelayerError } from "./errors.ts";
@@ -25,6 +25,7 @@ import { listBanks, resolveAccount } from "./paystack.ts";
 import { priceTransfer } from "./quote.ts";
 import { RecipientStore } from "./recipients.ts";
 import { currencyToBytes3 } from "./rail.ts";
+import { Sweeper } from "./sweeper.ts";
 import { Vault } from "./vault.ts";
 
 const config = loadConfig();
@@ -36,18 +37,35 @@ const transport = http(config.rpcUrl, { timeout: 10_000, retryCount: 2, retryDel
 const publicClient = createPublicClient({ chain: monadTestnet, transport });
 const walletClient = createWalletClient({ account, chain: monadTestnet, transport });
 
+const queue = new SubmissionQueue(() =>
+  publicClient.getTransactionCount({ address: account.address, blockTag: "pending" }),
+);
+
+const vaultDir = dataDir("VAULT_DIR", ".vault");
+
+// Shares the submission queue: the sweeper and order submission sign with the same key, and two
+// owners of one nonce is the bug the queue exists to prevent.
+const sweeper = new Sweeper({
+  publicClient,
+  walletClient,
+  account,
+  railCore: config.railCore,
+  queue,
+  file: dataDir("SWEEP_FILE", `${vaultDir}/../sweep.json`),
+  indexerUrl: process.env.INDEXER_URL?.trim() || undefined,
+});
+
 const deps: OrderDeps = {
   publicClient,
   walletClient,
   account,
   config,
-  recipients: new RecipientStore(process.env.RECIPIENT_DIR ?? ".recipients", config.recipientKey),
-  queue: new SubmissionQueue(() =>
-    publicClient.getTransactionCount({ address: account.address, blockTag: "pending" }),
-  ),
+  recipients: new RecipientStore(dataDir("RECIPIENT_DIR", ".recipients"), config.recipientKey),
+  queue,
+  onSubmitted: (orderId) => sweeper.track(orderId),
 };
 
-const vault = new Vault(process.env.VAULT_DIR ?? ".vault", config.recipientKey);
+const vault = new Vault(vaultDir, config.recipientKey);
 const paystack = { secretKey: config.paystackSecretKey };
 
 /**
@@ -87,7 +105,7 @@ const router = new Router({ allowedOrigins: config.allowedOrigins })
     endpoints: ["GET /healthz", "GET /v1/quote", "GET /v1/banks", "GET /v1/balance", "POST /v1/orders", "GET /v1/orders/:orderId"],
   }))
 
-  .get("/healthz", async () => ({ ok: true }))
+  .get("/healthz", async () => ({ ok: true, sweeping: sweeper.size }))
 
   .get("/v1/banks", async ({ query }) => {
     const currency = (query.get("currency") ?? "NGN").toUpperCase();
@@ -271,11 +289,13 @@ server.listen(config.port, () => {
   console.log(
     `${new Date().toISOString()} relayer listening port=${config.port} signer=${account.address} core=${config.railCore}`,
   );
+  sweeper.start(Number(process.env.SWEEP_INTERVAL_MS ?? 20_000));
 });
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {
     console.log(`${new Date().toISOString()} stopping`);
+    sweeper.stop();
     server.close(() => process.exit(0));
   });
 }

@@ -65,6 +65,28 @@ function bigNumber(key: string, fallback: bigint): bigint {
   }
 }
 
+/**
+ * A directory from the environment, refusing one that cannot be right on this machine.
+ *
+ * Git Bash on Windows rewrites any argument that looks like a POSIX path, so setting
+ * `VAULT_DIR=/data/vault` from it stores `C:/Program Files/Git/data/vault` on the host. On Linux that
+ * is a relative directory inside the container, off the volume, and every recipient written there is
+ * lost on the next deploy without a single error. It happened. A drive-letter path on a non-Windows
+ * host is always this mistake, so it is replaced with the default and said out loud.
+ */
+export function dataDir(key: string, fallback: string): string {
+  const value = optional(key);
+  if (!value) return fallback;
+  if (process.platform !== "win32" && /^[A-Za-z]:[\\/]/.test(value)) {
+    // Git Bash prefixes its own install directory, so what was typed is whatever follows it.
+    const typed = /^[A-Za-z]:[\\/]Program Files[\\/]Git([\\/].*)$/i.exec(value)?.[1]?.replace(/\\/g, "/");
+    const used = typed ?? fallback;
+    console.error(`${new Date().toISOString()} ${key}=${value} is a Windows path on ${process.platform}; using ${used}`);
+    return used;
+  }
+  return value;
+}
+
 export function loadConfig(): Config {
   const appBaseUrl = (optional("APP_BASE_URL") ?? "http://localhost:3000").replace(/\/+$/, "");
   const relayerKey = required("RELAYER_PRIVATE_KEY");

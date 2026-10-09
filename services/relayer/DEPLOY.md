@@ -23,6 +23,8 @@ stops without it is new orders, quotes, and the links the chat hands out.
 | `APP_BASE_URL` | Where the links the bot hands out should point. | no |
 | `ALLOWED_ORIGINS` | Origins the browser app may call from. Defaults to `APP_BASE_URL`. | no |
 | `FX_URL` | Live rate source. Has a default. | no |
+| `INDEXER_URL` | Envio GraphQL endpoint. Lets the sweeper find live orders it did not submit itself. Optional | no |
+| `SWEEP_INTERVAL_MS` | How often expired orders are refunded or finalized. Default 20000 | no |
 
 **Losing `RECIPIENT_ENCRYPTION_KEY` makes every stored recipient unreadable.** It is not derivable
 and not recoverable. Keep a copy somewhere that is not this machine.
@@ -34,6 +36,11 @@ Mount one at **`/data`**. The image sets `VAULT_DIR=/data/vault` and `RECIPIENT_
 Without it the container still starts and still works, and then every saved recipient and every
 pending link disappears on the next deploy, silently. That failure is invisible until a sender tries
 to send to someone they added yesterday.
+
+**Never set `VAULT_DIR` or `RECIPIENT_DIR` from Git Bash.** It rewrites `/data/vault` into
+`C:/Program Files/Git/data/vault`, which on Linux is a directory inside the container and off the
+volume. That is exactly what Railway held until 9 Oct 2026. The Dockerfile already sets both, so the
+right move is to not set them at all; the relayer now also recovers the mangled form and logs it.
 
 ## Deploying on Railway
 
