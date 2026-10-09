@@ -35,20 +35,21 @@ export function dollars(units: bigint): string {
   return `${negative ? "-" : ""}$${grouped}.${cents.toString().padStart(2, "0")}`;
 }
 
+/**
+ * When nothing understood the message. Conversational on purpose: people talk to this chat the way
+ * they talk to anyone, and a wall of commands reads like being told they did it wrong.
+ */
 export const help = (): string =>
   [
-    "Here is what I can do:",
+    "I didn't quite catch that, sorry. You can talk to me normally, for example:",
     "",
-    "*send 50k to mum* to send money",
-    "*add mum* to add someone new",
-    "*contacts* to see who you can send to",
-    "*remove mum* to forget someone",
-    "*balance* to see what you have",
-    "*rate* to see today's rate",
-    "*fund* to put money in",
-    "*about* to learn how this works",
+    "• \"send 50k to mum\"",
+    "• \"add my sister\"",
+    "• \"how much do I have?\"",
+    "• \"what's the rate today?\"",
+    "• \"is this safe?\"",
     "",
-    "Try: send 50k to mum",
+    "Or ask me anything about how Rail works.",
   ].join("\n");
 
 /** Today's rate, with where it came from. A number with no source is a number nobody can check. */
@@ -103,10 +104,11 @@ export const keptContact = (name: string): string => `Fine, ${safeName(name)} st
 
 export const welcome = (): string =>
   [
-    "Hi. I am Rail, and I send money home.",
+    "Hi! I'm Rail. I send money home to Nigeria, straight from this chat.",
     "",
-    "Start by adding someone: *add mum*",
-    "Then: *send 50k to mum*",
+    "Tell me who you send to, like \"add mum\", and I'll give you a private link for their bank details. Then just say \"send 50k to mum\" whenever you need to.",
+    "",
+    "You can also ask me anything: how long it takes, what it costs, or how your money is protected.",
   ].join("\n");
 
 export const addContact = (contactName: string, url: string): string =>
@@ -226,3 +228,117 @@ export const linkAccount = (url: string): string =>
 
 export const somethingWentWrong = (): string =>
   "Something went wrong on my side. Nothing was sent. Please try again in a moment.";
+
+/*//////////////////////////////////////////////////////////////
+                     QUESTIONS ABOUT RAIL
+//////////////////////////////////////////////////////////////*/
+
+/**
+ * Answers to the questions people actually ask a money app before they trust it.
+ *
+ * Each is precise about what the mechanism does and does not promise. "Guaranteed" appears nowhere:
+ * Rail changes who carries the risk, it does not make risk disappear, and a payments chat that
+ * overclaims is one nobody should believe the next time it says something true.
+ */
+export const answers = {
+  safety: (): string =>
+    [
+      "Good question to ask before sending anyone money. Here's how it works:",
+      "",
+      "• Your money waits in escrow, not with the provider and not with us, until the delivery is proven.",
+      "• The provider who wins has to lock up 110% of what they bid. If they don't deliver, your money comes back and their deposit goes to you.",
+      "• Only you can approve a payment, on your phone with Face ID. This chat can only suggest one.",
+      "",
+      "That isn't a promise nothing can ever go wrong. It means you don't have to trust a provider you've never heard of: the rules hold the money, and they keep working even if Rail itself went offline.",
+    ].join("\n"),
+
+  speed: (): string =>
+    [
+      "On the pilot, usually under two minutes from your approval to delivered.",
+      "",
+      "Providers get about 45 seconds to place sealed bids and another 45 to reveal them. The winner then pays your family's bank and the payment is confirmed.",
+      "",
+      "If nobody takes the transfer, your money comes straight back, usually within a minute.",
+    ].join("\n"),
+
+  cost: (): string =>
+    [
+      "You pay what the winning provider bids, plus a small fixed fee of about 13 cents.",
+      "",
+      "Before you approve, you see the most it can cost. Providers compete below that, and whatever they save you comes back to you automatically. Rail takes no cut of the exchange rate.",
+      "",
+      "Say \"rate\" to see today's rate.",
+    ].join("\n"),
+
+  providers: (): string =>
+    [
+      "Providers are businesses and individuals who hold naira and a bank account. Every transfer is a sealed auction: they bid without seeing each other's price, the lowest wins, and they pay your family from their own bank.",
+      "",
+      "They get paid only after the payment is proven, and they lock up a deposit first, so walking away costs them more than delivering.",
+      "",
+      "On the pilot today, two automated providers bid on every transfer, and their bank payouts are simulated because it's a test.",
+    ].join("\n"),
+
+  "no-provider": (): string =>
+    [
+      "If no provider takes a transfer, you get every cent back automatically, usually within a minute of the auction closing. There's nothing you need to do.",
+      "",
+      "Say \"balance\" to check what you have, or open your account to see each transfer and where it is.",
+    ].join("\n"),
+
+  "provider-fails": (): string =>
+    [
+      "Then their deposit covers you.",
+      "",
+      "Before a provider can win, they lock up 110% of what they bid. If they don't prove the payment in time, your money comes back to you, and their deposit is taken and paid to you as well.",
+      "",
+      "And if you're told it was paid but your family didn't receive it, you can object before the money is released.",
+    ].join("\n"),
+
+  corridors: (): string =>
+    [
+      "Right now Rail sends to Nigeria, from the UK and the US.",
+      "",
+      "Ghana, Kenya, South Africa, India, the Philippines and others are next, as providers join for those currencies. The auction doesn't care where the money lands, so a new country only needs providers who hold its currency.",
+    ].join("\n"),
+
+  recipient: (): string =>
+    "No. Your family needs nothing but their normal bank account. The money arrives as an ordinary bank transfer, with a reference on it.",
+
+  privacy: (): string =>
+    [
+      "Bank details never go in this chat. When you add someone, I send you a private link to enter them, and here you only ever see the last four digits, like ····4471.",
+      "",
+      "They're stored encrypted, and the public record holds only a sealed fingerprint of the account, never the number.",
+    ].join("\n"),
+
+  how: (): string =>
+    [
+      "You tell me how much and who to. I send you a link, and you approve it on your phone with Face ID.",
+      "",
+      "Your money then waits safely while local providers compete in a sealed auction to deliver it. The cheapest wins, pays your family's bank from their own account, and gets paid once the payment is proven. Whatever the competition saves you comes back to you.",
+      "",
+      "Want to try? Start with \"add mum\".",
+    ].join("\n"),
+
+  who: (): string =>
+    [
+      "I'm Rail's assistant. I can send money home for you, check your balance, add the people you send to, and answer questions about how Rail works.",
+      "",
+      "One thing I can't do is approve a payment. That only ever happens on your phone, with your face, so even someone who took over this chat couldn't move your money.",
+    ].join("\n"),
+
+  thanks: (): string => "You're welcome! Anything else? You can say something like \"send 20k to mum\" whenever you're ready.",
+} as const;
+
+/** Somebody named who, but not how much. */
+export const sendNeedsAmount = (contactName: string): string =>
+  `How much would you like to send to ${safeName(contactName)}? For example: "send 20k to ${safeName(contactName).toLowerCase()}".`;
+
+/** Asked about something other than Rail. Friendly, and firmly not a general assistant. */
+export const offTopic = (): string =>
+  [
+    "I'm only able to help with sending money through Rail, so I'll leave that one, sorry.",
+    "",
+    "I can send money home, check your balance, add someone new, or explain how it all works.",
+  ].join("\n");

@@ -10,8 +10,10 @@
 import type { Address } from "viem";
 
 import * as messages from "./messages/index.ts";
-import { MINIMUM_MINOR } from "./amounts.ts";
+import { MINIMUM_MINOR, parseAmount } from "./amounts.ts";
+import type { Assistant } from "./assistant.ts";
 import { parseCommand } from "./commands.ts";
+import { understand, type Understood } from "./understand.ts";
 import { RelayerUnavailable, type ContactSummary, type RelayerClient } from "./relayer.ts";
 
 export type Deps = {
@@ -22,7 +24,55 @@ export type Deps = {
   /** Where the app lives, for the links the bot hands out in `fund` and `about`. */
   appBaseUrl?: string;
   log?: (line: string) => void;
+  /** Optional: Claude, for what neither the commands nor `understand` could read. */
+  assistant?: Assistant | undefined;
 };
+
+/** What a message comes to, after all three layers have had a look. */
+type Plan = Understood | { kind: "say"; text: string };
+
+/**
+ * Commands first, then natural language, then the assistant — cheapest and most predictable first.
+ *
+ * Whatever the assistant extracts becomes the same `Command` a typed one would, so it reaches the
+ * same code: a `send` from the model still only produces a draft and a link for Face ID.
+ */
+async function plan(deps: Deps, text: string): Promise<Plan> {
+  const command = parseCommand(text);
+  if (command.kind !== "help" || /^\s*\/?(?:help|\?)\s*$/i.test(text)) return command;
+
+  const understood = understand(text);
+  if (understood) return understood;
+
+  if (!deps.assistant) return command;
+  const result = await deps.assistant(text);
+  if (!result) return command;
+
+  switch (result.intent) {
+    case "send": {
+      if (!result.contact) return command;
+      const amount = result.amount ? parseAmount(result.amount) : undefined;
+      return amount === undefined
+        ? { kind: "send-needs-amount", contactName: result.contact }
+        : { kind: "send", localAmount: amount, contactName: result.contact };
+    }
+    case "add":
+      return { kind: "add", contactName: result.contact ?? "" };
+    case "remove":
+      return { kind: "remove", contactName: result.contact ?? "" };
+    case "contacts":
+    case "balance":
+    case "rate":
+    case "fund":
+    case "about":
+      return { kind: result.intent };
+    case "answer":
+      return result.reply ? { kind: "say", text: result.reply } : command;
+    case "off_topic":
+      // Our words, not the model's: the one reply that must never drift.
+      return { kind: "say", text: messages.offTopic() };
+  }
+}
 
 /**
  * The one question the bot is allowed to be waiting on.
@@ -54,10 +104,19 @@ function findContact(contacts: ContactSummary[], name: string): ContactSummary |
 }
 
 export async function replyTo(deps: Deps, waId: string, text: string): Promise<string> {
-  const command = parseCommand(text);
+  const command = await plan(deps, text);
 
   try {
     switch (command.kind) {
+      case "say":
+        return command.text;
+
+      case "answer":
+        return messages.answers[command.topic]();
+
+      case "send-needs-amount":
+        return messages.sendNeedsAmount(command.contactName);
+
       case "welcome":
         return messages.welcome();
 

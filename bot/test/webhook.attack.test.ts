@@ -213,7 +213,7 @@ describe("what a sender cannot talk it into", () => {
       sent.length = 0;
       await say(text);
       assert.equal(sent.length, 1);
-      assert.match(sent[0]!.body, /Here is what I can do/, text);
+      assert.match(sent[0]!.body, /I didn't quite catch that/, text);
     }
   });
 

@@ -12,6 +12,7 @@
 import { createPublicClient, erc20Abi, http, type Address } from "viem";
 import { monadTestnet } from "viem/chains";
 
+import { claudeAssistant } from "./assistant.ts";
 import { loadConfig } from "./config.ts";
 import type { Deps } from "./handle.ts";
 import { RelayerClient } from "./relayer.ts";
@@ -39,7 +40,12 @@ const deps: Deps = {
   currency: config.currency,
   appBaseUrl: process.env.APP_BASE_URL ?? "https://rail-pay.vercel.app",
   log,
+  // Optional. Without a key the bot still understands natural language through understand.ts.
+  assistant: process.env.ANTHROPIC_API_KEY?.trim()
+    ? claudeAssistant({ apiKey: process.env.ANTHROPIC_API_KEY.trim(), log })
+    : undefined,
 };
+log(`${new Date().toISOString()} assistant=${deps.assistant ? "on" : "off"}`);
 
 let stopping = false;
 const onSignal = (handler: () => void): void => {

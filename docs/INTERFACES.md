@@ -452,8 +452,26 @@ not done days before a deadline for zero behaviour change.
 - `GET /webhook` — Meta verification (`hub.verify_token`), WhatsApp only.
 - `POST /webhook` — reject unless the transport's check above verifies.
 - Calls to 🔑bot relayer endpoints carry `Authorization: Bearer <BOT_API_KEY>`.
-- **Structured commands only** — no open-domain assistant (banned on the Business Platform since
-  15 Jan 2026). Amounts accept `50k`, `50,000`, `₦50000`. Anything else → `help`.
+- **Intents, understood conversationally — never an open-domain assistant** (general-purpose AI
+  chatbots are banned on the Business Platform since 15 Jan 2026; a business assistant scoped to
+  the business is not). Amounts accept `50k`, `50,000`, `₦50000`, `20 thousand`.
+
+  A message is understood in three steps, and the first that recognises it wins:
+
+  1. **Commands** (`commands.ts`) — the exact forms in the table below.
+  2. **Natural language** (`understand.ts`, deterministic, no network) — "can you send 20k to my
+     mum", "how much do I have", "is this safe", "what if the provider doesn't pay", "thanks".
+     Questions about Rail get full-sentence answers from `messages/`.
+  3. **Assistant** (`assistant.ts`, only when `ANTHROPIC_API_KEY` is set) — Claude, grounded on a
+     fixed Rail fact sheet, returns structured JSON `{ intent, amount?, contact?, reply? }` with
+     `intent ∈ send | add | contacts | remove | balance | rate | fund | about | answer | off_topic`.
+     An action intent is executed by the same code as the command, so it can still only *propose*
+     (a draft and a link); `answer` replies are about Rail only; `off_topic` gets a friendly
+     redirect. Before any text leaves for the model, **every run of 8+ digits is replaced** — an
+     account number never reaches it. A reply containing a ban-list word is discarded for a safe
+     fallback. No memory across messages: each message is understood on its own.
+
+  Unrecognised by all three → a conversational `help`.
 
 | Command | Does |
 |---|---|

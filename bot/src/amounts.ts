@@ -26,6 +26,9 @@ export function parseAmount(raw: string): bigint | undefined {
     // Longest alternative first, or "ngn50000" loses only its "n" and stops parsing.
     .replace(/^(?:₦|ngn|naira|n)\s*/, "")
     .replace(/\s*(?:naira|ngn)$/, "")
+    // "20 thousand", "2 million": how people say it out loud, and so how they type it in a chat.
+    .replace(/\s*(?:thousand|grand)$/, "k")
+    .replace(/\s*(?:million|mil)$/, "m")
     // Separators people type: commas, spaces, narrow spaces.
     .replace(/[,\s  ]/g, "");
 
