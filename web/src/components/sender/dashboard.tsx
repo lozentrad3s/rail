@@ -57,9 +57,15 @@ function Figure({
 }
 
 function StatusPill({ status }: { status: Transfer["status"] }) {
-  const copy = { running: "On its way", delivered: "Delivered", returned: "Returned to you" }[status];
+  const copy = {
+    running: "On its way",
+    returning: "Coming back to you",
+    delivered: "Delivered",
+    returned: "Returned to you",
+  }[status];
   const tint = {
     running: "text-ink-muted",
+    returning: "text-slash-text",
     delivered: "text-accent",
     returned: "text-slash-text",
   }[status];
@@ -130,8 +136,14 @@ export function Dashboard({ address }: { address: `0x${string}` | undefined }) {
         />
         <Figure
           label="Still running"
-          value={totals ? String(totals.running) : <span className="skeleton" aria-label="Loading">0.00</span>}
-          hint={totals && totals.running > 0 ? "We will tell you in the chat." : "Nothing in flight."}
+          value={totals ? String(totals.running + totals.returning) : <span className="skeleton" aria-label="Loading">0.00</span>}
+          hint={
+            totals && totals.returning > 0
+              ? `${totals.returning} found no provider in time. That money comes back to you on its own, usually within a minute.`
+              : totals && totals.running > 0
+                ? "We will tell you in the chat."
+                : "Nothing in flight."
+          }
           icon={<Clock className="size-[18px]" strokeWidth={2} />}
         />
       </div>

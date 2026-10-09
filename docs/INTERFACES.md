@@ -572,3 +572,7 @@ failure it opens `/r/<orderId>` so the recipient can confirm manually (L1 fallba
 Entities: `Order` (all fields + status timeline + blocks), `Bid` (commit/reveal, amount, leading),
 `LiquidityProvider` (stake, stats), `Attestation`, `CurrencyDayStat` (volume, count, median bid
 rate, median settlement blocks). Sourced from the events in `IRail.sol` only.
+
+The sender dashboard (`/account`) reads history from it by `sender` (`NEXT_PUBLIC_INDEXER_URL`), so an
+account shows the same transfers on every device; the device's own list only covers the moments
+before the indexer has seen a new order. The relayer's sweeper (§5.1) seeds itself from it too.
