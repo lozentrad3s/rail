@@ -41,7 +41,7 @@ import { monadTestnet } from "viem/chains";
 const RAIL_CORE = (process.env.RAIL_CORE ?? "0xfa8C88Ee0fCF869783F489cADB222750F576f221") as Address;
 const ATTESTOR = (process.env.RAIL_ATTESTOR ?? "0x507756b1f5CCC8d1C960468ca815DA2efFDD3906") as Address;
 const RPC = process.env.RPC_URL ?? "https://testnet-rpc.monad.xyz";
-const INDEXER = process.env.INDEXER_URL ?? "https://indexer.dev.hyperindex.xyz/8e31d9a/v1/graphql";
+const INDEXER = process.env.INDEXER_URL ?? "https://indexer.dev.hyperindex.xyz/c7bc807/v1/graphql";
 
 /** Which bank feed proves which provider's payout. On the pilot, each bot's simulated bank. */
 const FEEDS: Record<string, string> = Object.fromEntries(

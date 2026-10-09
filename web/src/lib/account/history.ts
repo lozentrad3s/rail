@@ -31,7 +31,7 @@ const coreAbi = parseAbi([
 
 /** The live Envio endpoint. On the development tier it changes per deployment, so set the env. */
 export const INDEXER_URL =
-  process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.dev.hyperindex.xyz/8e31d9a/v1/graphql";
+  process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.dev.hyperindex.xyz/c7bc807/v1/graphql";
 
 /**
  * `returning` is an order whose auction or payout window closed without a delivery. The escrow is

@@ -71,7 +71,13 @@ newest live deployment was five days from the 7-day inactivity deletion. Before 
 its replacement has synced. Then point `NEXT_PUBLIC_INDEXER_URL` (Vercel) and `INDEXER_URL` (relayer)
 at the new endpoint.
 
-**A build is triggered by a push to `main`.** Envio only knows commits it received by webhook, so a
+**Auto-deploy is off since 9 Oct 2026, on purpose.** Every push to `main` made a new deployment
+with a new URL, so the endpoint the app reads moved with every commit and the slots filled. The live
+deployment is commit `18471cd` at `https://indexer.dev.hyperindex.xyz/c7bc807/v1/graphql`, synced
+from block 63549435 and created 9 Oct, so it outlives judging. To redeploy: turn auto-deploy on,
+push, wait for sync, repoint `NEXT_PUBLIC_INDEXER_URL` / `INDEXER_URL`, turn it off again.
+
+**A build is triggered by a push to `main`** (when auto-deploy is on). Envio only knows commits it received by webhook, so a
 commit made before the indexer existed cannot be deployed by hash — push a new one instead.
 
 ### Setting it up again from scratch
