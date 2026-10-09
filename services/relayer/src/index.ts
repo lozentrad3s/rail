@@ -16,6 +16,7 @@ import { createAccountLink, getLinkedAccount, linkAccount } from "./accounts.ts"
 import { dataDir, loadConfig } from "./config.ts";
 import { createContactLink, forgetContact, listContacts, saveContact } from "./contacts.ts";
 import { createDraft, readDraft } from "./drafts.ts";
+import { PracticeDollars } from "./faucet.ts";
 import { RelayerError } from "./errors.ts";
 import { assertSaneFallback, currentRate } from "./fx.ts";
 import { Router } from "./http.ts";
@@ -66,6 +67,14 @@ const deps: OrderDeps = {
 };
 
 const vault = new Vault(vaultDir, config.recipientKey);
+
+const practiceDollars = new PracticeDollars({
+  publicClient,
+  walletClient,
+  account,
+  queue,
+  chainId: monadTestnet.id,
+});
 const paystack = { secretKey: config.paystackSecretKey };
 
 /**
@@ -102,7 +111,7 @@ const router = new Router({ allowedOrigins: config.allowedOrigins })
     app: "https://rail-pay.vercel.app",
     chat: "https://t.me/RailpayBot",
     note: "This is Rail's relayer API. It quotes transfers and submits the orders senders sign. It never holds anyone's money, and settlement does not depend on it: finalize and refund are permissionless.",
-    endpoints: ["GET /healthz", "GET /v1/quote", "GET /v1/banks", "GET /v1/balance", "POST /v1/orders", "GET /v1/orders/:orderId"],
+    endpoints: ["GET /healthz", "GET /v1/quote", "GET /v1/banks", "GET /v1/balance", "POST /v1/orders", "GET /v1/orders/:orderId", "POST /v1/practice-dollars"],
   }))
 
   .get("/healthz", async () => ({ ok: true, sweeping: sweeper.size }))
@@ -262,6 +271,9 @@ const router = new Router({ allowedOrigins: config.allowedOrigins })
 
   // Asked before approving, so a sender who is short finds out before signing rather than after.
   .get("/v1/balance", async ({ query }) => readBalance(deps, query.get("address") ?? ""))
+
+  // Testnet only: the relayer pays gas for Agora's faucet, so an account with no MON can practise.
+  .post("/v1/practice-dollars", async ({ body }) => practiceDollars.request(body))
 
   .post("/v1/orders", async ({ body }) => createOrder(deps, body))
 
