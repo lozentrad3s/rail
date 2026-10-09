@@ -30,6 +30,11 @@ ENV RECIPIENT_DIR=/data/recipients
 RUN mkdir -p /data/vault /data/recipients
 
 # Runs unprivileged: nothing here needs root, and the node image already ships a `node` user.
+#
+# Except on Railway, which mounts its volume over /data owned by root, so this chown is undone at
+# runtime and `node` cannot write there: the relayer exits with EACCES. Railway's fix is the service
+# variable RAILWAY_RUN_UID=0. The wrong fix — pointing VAULT_DIR somewhere writable inside the
+# image — is what was live until 9 Oct 2026, and it quietly lost every recipient on each deploy.
 RUN chown -R node:node /data /app
 USER node
 

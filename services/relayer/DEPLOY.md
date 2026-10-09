@@ -63,7 +63,9 @@ coordinate. A project token has no such limit:
    The repo root is linked to the **Rail-pay** project and its relayer service. A bare `railway up`
    uploads the whole repo, which has no single app to build, and fails.
 
-Then add a volume at `/data` and set the variables above in the dashboard. The health check at
+Then add a volume at `/data` and set the variables above in the dashboard, **plus
+`RAILWAY_RUN_UID=0`**. Railway mounts the volume owned by root and the image runs as `node`, so
+without it the relayer cannot write to `/data` and exits with `EACCES`. The health check at
 `/healthz` tells the platform whether the process is actually serving.
 
 ## After it is up
