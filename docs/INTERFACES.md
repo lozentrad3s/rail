@@ -522,7 +522,7 @@ Design: `docs/DESIGN.md`.
 | `/l/[code]` | sender | Connect a WhatsApp number to this account — signs `"Rail link\ntoken: …\naddress: …"` and posts it to `POST /v1/accounts/link` (§5.1) |
 | `/o/[orderId]` | sender | Live status |
 | `/r/[orderId]` | recipient | "I received ₦X" one tap (L1) |
-| `/provider` | LP | Connect a wallet, stake, see live requests, bid, collect the account number, mark paid. Route group `(provider)`, exempt from the ban list: a provider arrived with a wallet |
+| `/provider` | LP | Connect a wallet, stake, see live requests, bid, collect the account number, mark paid. Route group `(provider)`, exempt from the ban list: a provider arrived with a wallet. **Sign-in is Dynamic** (`@dynamic-labs/sdk-react-core`, `NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID`): browser wallets, mobile wallets over WalletConnect, or email for a provider with no wallet yet (a Dynamic embedded wallet, keys held by the provider, never by Rail). The signer is Dynamic's viem `WalletClient`, switched to chain 10143 before every write. Without the env var the page falls back to the EIP-6963 picker. Dynamic is loaded on this route only: senders never download it, and the sender's passkey path does not change |
 | `/explorer` | public | Auctions, clearing rates, settlement times (from indexer) |
 
 The route segment is `[code]`, not `[token]`, while the wire field stays `token`: `token` is on the

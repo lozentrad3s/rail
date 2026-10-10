@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ProviderScreen } from "@/components/provider/provider-screen";
+import { ProviderEntry } from "@/components/provider/provider-entry";
 
 export const metadata: Metadata = {
   title: "Become a Rail provider",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function ProviderPage() {
-  return <ProviderScreen />;
+  return <ProviderEntry />;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Wallet } from "lucide-react";
 
@@ -28,6 +28,8 @@ export function WalletPicker({
   className,
   onConnected,
   onError,
+  heading,
+  hideWhenNone = false,
 }: {
   busy: boolean;
   label: string;
@@ -35,6 +37,13 @@ export function WalletPicker({
   onConnected: (wallet: ConnectedWallet) => void;
   /** The raw error, so each screen can word the failure in its own voice. */
   onError: (error: unknown) => void;
+  /** Shown above the button, and hidden with it. */
+  heading?: ReactNode;
+  /**
+   * Render nothing when no wallet is installed. For a page that already offers another way in, where
+   * "no wallet found" would contradict the button right above it.
+   */
+  hideWhenNone?: boolean;
 }) {
   const reduce = useReducedMotion();
   const [wallets, setWallets] = useState<DiscoveredWallet[]>([]);
@@ -64,9 +73,11 @@ export function WalletPicker({
   };
 
   const none = wallets.length === 0;
+  if (hideWhenNone && none) return null;
 
   return (
     <>
+      {heading}
       <button
         type="button"
         onClick={() => (wallets.length > 1 ? setChoosing(true) : void connect(wallets[0]))}

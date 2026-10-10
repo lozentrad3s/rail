@@ -32,8 +32,14 @@ import {
   rememberBid,
   type Request,
 } from "@/lib/provider/requests";
-import { forgetWallet, resumeWallet, walletClientFor, WalletError } from "@/lib/account/wallet";
+import { forgetWallet, resumeWallet, WalletError } from "@/lib/account/wallet";
+import { browserAccount, type ProviderAccount } from "@/lib/provider/account";
 import { WalletPicker } from "@/components/connect/wallet-picker";
+import {
+  DYNAMIC_ENVIRONMENT_ID,
+  DynamicAccountBridge,
+  DynamicSignInButton,
+} from "@/components/provider/dynamic-sign-in";
 import { WalletBalances, type Holdings } from "@/components/connect/wallet-balances";
 
 /**
@@ -78,7 +84,8 @@ const relayerBase = (process.env.NEXT_PUBLIC_RELAYER_URL || "http://localhost:87
 export function ProviderScreen() {
   const reduce = useReducedMotion();
 
-  const [lp, setLp] = useState<Address | null>(null);
+  const [account, setAccount] = useState<ProviderAccount | null>(null);
+  const lp = account?.address ?? null;
   const [standing, setStanding] = useState<Standing | null>(null);
   const [collateralBps, setCollateralBps] = useState<bigint>(11_000n);
   const [requests, setRequests] = useState<Request[] | null>(null);
@@ -108,17 +115,30 @@ export function ProviderScreen() {
   useEffect(() => {
     void resumeWallet().then((wallet) => {
       if (!wallet) return;
-      setLp(wallet.address);
+      setAccount((current) => current ?? browserAccount(wallet));
       void refresh(wallet.address);
     });
   }, [refresh]);
+
+  /**
+   * Dynamic reports its wallet here. Signing out of Dynamic clears only a Dynamic account, never a
+   * browser wallet connected through the other door.
+   */
+  const onDynamic = useCallback(
+    (next: ProviderAccount | null) => {
+      setAccount((current) => (next ? next : current?.source === "dynamic" ? null : current));
+      if (next) void refresh(next.address);
+    },
+    [refresh],
+  );
 
   /**
    * Follow the wallet rather than a snapshot of it. Switching account in Zerion or MetaMask used to
    * leave this page bidding as the old address until a reload.
    */
   useEffect(() => {
-    if (!lp) return;
+    // Dynamic follows its own wallet's account changes; this is for the browser picker only.
+    if (!lp || account?.source !== "browser") return;
     let detach: (() => void) | undefined;
     let cancelled = false;
     void resumeWallet().then((wallet) => {
@@ -128,10 +148,10 @@ export function ProviderScreen() {
         const next = (args[0] as string[] | undefined)?.[0] as Address | undefined;
         if (!next) {
           forgetWallet();
-          setLp(null);
+          setAccount(null);
           return;
         }
-        setLp(next);
+        if (wallet) setAccount(browserAccount({ ...wallet, address: next }));
         setStanding(null);
         void refresh(next);
       };
@@ -147,7 +167,7 @@ export function ProviderScreen() {
       cancelled = true;
       detach?.();
     };
-  }, [lp, refresh]);
+  }, [lp, account?.source, refresh]);
 
   // Requests expire in blocks, so the list is stale within seconds of arriving.
   useEffect(() => {
@@ -181,7 +201,8 @@ export function ProviderScreen() {
       const amount = parseUnits(stakeInput || "0", AUSD_DECIMALS);
       if (amount <= 0n) throw new Error("Enter an amount to stake.");
 
-      const wallet = walletClientFor((await resumeWallet())!);
+      if (!account) return;
+      const wallet = await account.walletClient();
       // Approve only what is being staked. An open allowance is one somebody eventually spends.
       if ((await readAllowance(lp)) < amount) {
         const approval = await approveStake(wallet, lp, amount);
@@ -214,7 +235,8 @@ export function ProviderScreen() {
         throw new Error("Could not save your bid locally, so it was not sent.");
       }
 
-      const wallet = walletClientFor((await resumeWallet())!);
+      if (!account) return;
+      const wallet = await account.walletClient();
       const hash = await commitBid(wallet, lp, request.orderId, commitmentFor(request.orderId, lp, amount, salt));
       await client.waitForTransactionReceipt({ hash });
       setNote("Bid sealed. Reveal it when the window opens, or it does not count.");
@@ -227,7 +249,8 @@ export function ProviderScreen() {
       const saved = bidFor(request.orderId, lp);
       if (!saved) throw new Error("No sealed bid for this request on this device.");
 
-      const wallet = walletClientFor((await resumeWallet())!);
+      if (!account) return;
+      const wallet = await account.walletClient();
       const hash = await revealBid(wallet, lp, request.orderId, BigInt(saved.amount), saved.salt);
       await client.waitForTransactionReceipt({ hash });
       markRevealed(request.orderId, lp);
@@ -238,12 +261,13 @@ export function ProviderScreen() {
   const fetchDetails = (orderId: Hex) =>
     run(`details:${orderId}`, async () => {
       if (!lp) return;
-      const wallet = walletClientFor((await resumeWallet())!);
+      if (!account) return;
+      const wallet = await account.walletClient();
       const issuedAt = Math.floor(Date.now() / 1000);
 
       // The relayer hands the account number only to the winner, proved by this signature.
       const signature = await wallet.signMessage({
-        account: lp,
+        account: wallet.account ?? lp,
         message: `Rail payout details\norder: ${orderId}\nissuedAt: ${issuedAt}`,
       });
 
@@ -262,7 +286,8 @@ export function ProviderScreen() {
   const confirmPaid = (orderId: Hex) =>
     run(`paid:${orderId}`, async () => {
       if (!lp) return;
-      const wallet = walletClientFor((await resumeWallet())!);
+      if (!account) return;
+      const wallet = await account.walletClient();
       const hash = await markPaid(wallet, lp, orderId);
       await client.waitForTransactionReceipt({ hash });
       setNote("Confirmed. The sender has a short window to object, then the escrow pays you.");
@@ -291,6 +316,8 @@ export function ProviderScreen() {
     staked ||
     (holdings !== null && holdings.monWei > 0n && holdings.ausdUnits + (standing?.staked ?? 0n) >= minStake);
   const step: 1 | 2 | 3 | 4 = !lp ? 1 : !funded ? 2 : !staked ? 3 : 4;
+
+  const bridge = DYNAMIC_ENVIRONMENT_ID ? <DynamicAccountBridge onChange={onDynamic} /> : null;
 
   if (!lp) {
     return (
@@ -326,14 +353,34 @@ export function ProviderScreen() {
           </dl>
           <Steps current={1} />
 
+          {bridge}
           <div className="mt-7">
+            {DYNAMIC_ENVIRONMENT_ID ? (
+              <>
+                <DynamicSignInButton disabled={busy !== null} />
+                <p className="text-small mt-2 text-ink-muted">
+                  Use a browser wallet, a wallet on your phone, or just your email. Sign-in is by
+                  Dynamic; Rail never sees your key.
+                </p>
+              </>
+            ) : null}
             <WalletPicker
               busy={busy !== null}
+              hideWhenNone={Boolean(DYNAMIC_ENVIRONMENT_ID)}
+              heading={
+                DYNAMIC_ENVIRONMENT_ID ? (
+                  <p className="text-label mb-2 mt-6 text-ink-muted">Or connect a browser wallet directly</p>
+                ) : undefined
+              }
               label="Connect wallet"
-              className="btn btn-primary clay-press w-full text-[1rem]"
+              className={
+                DYNAMIC_ENVIRONMENT_ID
+                  ? "btn btn-secondary-paper clay-press w-full text-[1rem]"
+                  : "btn btn-primary clay-press w-full text-[1rem]"
+              }
               onConnected={(wallet) => {
                 setProblem(null);
-                setLp(wallet.address);
+                setAccount(browserAccount(wallet));
                 void refresh(wallet.address);
               }}
               onError={(error) =>
@@ -370,19 +417,23 @@ export function ProviderScreen() {
 
   return (
     <Screen>
+      {bridge}
       <div className="flex flex-1 flex-col py-10">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-h2">Provider</h1>
             <p className="text-small mt-1.5 font-mono text-ink-muted">
               {lp.slice(0, 6)}...{lp.slice(-4)}
+              <span className="ml-2 font-sans">
+                · {account?.source === "dynamic" ? `${account.label} via Dynamic` : account?.label}
+              </span>
             </p>
           </div>
           <button
             type="button"
             onClick={() => {
-              forgetWallet();
-              setLp(null);
+              void account?.signOut();
+              setAccount(null);
               setStanding(null);
               setHoldings(null);
             }}

@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@category-labs/mera": "^0.2.0",
+    "@dynamic-labs/ethereum": "^5.10.0",
+    "@dynamic-labs/sdk-react-core": "^5.10.0",
     "@scure/bip32": "^2.4.0",
     "@scure/bip39": "^2.4.0",
     "lucide-react": "^1.46.0",

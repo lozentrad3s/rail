@@ -104,7 +104,8 @@ export async function readAllowance(lp: Address): Promise<bigint> {
 export async function approveStake(wallet: WalletClient, lp: Address, amount: bigint): Promise<Hex> {
   return wallet.writeContract({
     chain: null,
-    account: lp,
+    // The client's own signer when it has one (a Dynamic email wallet does); the address otherwise.
+    account: wallet.account ?? lp,
     address: SETTLEMENT_ASSET,
     abi: erc20Abi,
     functionName: "approve",
@@ -115,7 +116,7 @@ export async function approveStake(wallet: WalletClient, lp: Address, amount: bi
 export async function stake(wallet: WalletClient, lp: Address, amount: bigint): Promise<Hex> {
   return wallet.writeContract({
     chain: null,
-    account: lp,
+    account: wallet.account ?? lp,
     address: REGISTRY,
     abi: registryAbi,
     functionName: "stake",
@@ -131,7 +132,7 @@ export async function commitBid(
 ): Promise<Hex> {
   return wallet.writeContract({
     chain: null,
-    account: lp,
+    account: wallet.account ?? lp,
     address: ESCROW,
     abi: coreAbi,
     functionName: "commitBid",
@@ -148,7 +149,7 @@ export async function revealBid(
 ): Promise<Hex> {
   return wallet.writeContract({
     chain: null,
-    account: lp,
+    account: wallet.account ?? lp,
     address: ESCROW,
     abi: coreAbi,
     functionName: "revealBid",
@@ -165,7 +166,7 @@ export async function revealBid(
 export async function markPaid(wallet: WalletClient, lp: Address, orderId: Hex): Promise<Hex> {
   return wallet.writeContract({
     chain: null,
-    account: lp,
+    account: wallet.account ?? lp,
     address: ESCROW,
     abi: coreAbi,
     functionName: "markPaid",
