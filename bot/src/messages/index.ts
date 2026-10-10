@@ -106,7 +106,7 @@ export const welcome = (): string =>
   [
     "Hi! I'm Rail. I send money home to Nigeria, straight from this chat.",
     "",
-    "Tell me who you send to, like \"add mum\", and I'll give you a private link for their bank details. Then just say \"send 50k to mum\" whenever you need to.",
+    "Tell me who you send to, like \"add mum\", \"add dad\" or \"add my friend Tolu\", and I'll give you a private link for their bank details. Then just say \"send 50k to dad\" whenever you need to.",
     "",
     "You can also ask me anything: how long it takes, what it costs, or how your money is protected.",
   ].join("\n");
@@ -122,7 +122,7 @@ export const addContact = (contactName: string, url: string): string =>
   ].join("\n");
 
 export const addNeedsName = (): string =>
-  ["Who am I adding?", "", "Try: *add mum*"].join("\n");
+  ["Who am I adding?", "", "Anyone with a Nigerian bank account: *add mum*, *add dad*, *add my landlord*."].join("\n");
 
 /**
  * The reply when someone pastes account digits into the chat.
@@ -134,7 +134,7 @@ export const accountNumberInChat = (): string =>
   [
     "Please do not put account numbers in this chat. It is not a safe place for them.",
     "",
-    "Tell me who they are instead, like *add mum*, and I will send you a private place to enter the details.",
+    "Tell me who they are instead, like *add dad* or *add my sister*, and I will send you a private place to enter the details.",
   ].join("\n");
 
 /** More than this and the reply stops being readable long before WhatsApp stops accepting it. */
@@ -158,7 +158,7 @@ export const contactList = (contacts: ContactLine[]): string => {
 };
 
 export const noContacts = (): string =>
-  ["You have not added anyone yet.", "", "Start with: *add mum*"].join("\n");
+  ["You have not added anyone yet.", "", "Add whoever you send to: *add mum*, *add dad*, *add my friend Tolu*."].join("\n");
 
 /**
  * A name is whatever someone typed, and it comes straight back out.
@@ -318,7 +318,7 @@ export const answers = {
       "",
       "Your money then waits safely while local providers compete in a sealed auction to deliver it. The cheapest wins, pays your family's bank from their own account, and gets paid once the payment is proven. Whatever the competition saves you comes back to you.",
       "",
-      "Want to try? Start with \"add mum\".",
+      "Want to try? Add whoever you send to, like \"add mum\", \"add dad\" or \"add my friend Tolu\".",
     ].join("\n"),
 
   who: (): string =>
@@ -341,4 +341,39 @@ export const offTopic = (): string =>
     "I'm only able to help with sending money through Rail, so I'll leave that one, sorry.",
     "",
     "I can send money home, check your balance, add someone new, or explain how it all works.",
+  ].join("\n");
+
+/*//////////////////////////////////////////////////////////////
+                        PROVIDER ALERTS
+//////////////////////////////////////////////////////////////*/
+
+export const alertsOn = (url: string): string =>
+  [
+    "Alerts are on. I'll message you here the moment a new transfer is waiting for a provider: how much, the most the sender will pay, and how long bids stay open.",
+    "",
+    `Bid from your provider page: ${url}`,
+    "",
+    "Say *alerts off* to stop.",
+  ].join("\n");
+
+export const alertsOff = (): string => "Alerts are off. Say *alerts* any time to turn them back on.";
+
+export const alertsUnavailable = (): string =>
+  "Request alerts are only on Telegram for now. Open your provider page to see requests live.";
+
+/** One new request. Public facts only: every request is already visible to anyone who looks. */
+export const providerAlert = (input: {
+  localAmount: bigint;
+  ceilingUnits: bigint;
+  secondsLeft: number;
+  url: string;
+}): string =>
+  [
+    `New transfer to deliver: *${naira(input.localAmount)}*`,
+    `The sender pays up to ${dollars(input.ceilingUnits)}.`,
+    input.secondsLeft > 0
+      ? `Sealed bids close in about ${input.secondsLeft} seconds.`
+      : "Sealed bids are closing now.",
+    "",
+    `Bid: ${input.url}`,
   ].join("\n");

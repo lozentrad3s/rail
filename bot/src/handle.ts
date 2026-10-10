@@ -11,6 +11,7 @@ import type { Address } from "viem";
 
 import * as messages from "./messages/index.ts";
 import { MINIMUM_MINOR, parseAmount } from "./amounts.ts";
+import type { AlertSubscribers } from "./alerts.ts";
 import type { Assistant } from "./assistant.ts";
 import { parseCommand } from "./commands.ts";
 import { understand, type Understood } from "./understand.ts";
@@ -24,6 +25,8 @@ export type Deps = {
   /** Where the app lives, for the links the bot hands out in `fund` and `about`. */
   appBaseUrl?: string;
   log?: (line: string) => void;
+  /** Provider alerts. Telegram only: WhatsApp cannot message first outside a 24-hour window. */
+  alerts?: AlertSubscribers | undefined;
   /** Optional: Claude, for what neither the commands nor `understand` could read. */
   assistant?: Assistant | undefined;
 };
@@ -110,6 +113,15 @@ export async function replyTo(deps: Deps, waId: string, text: string): Promise<s
     switch (command.kind) {
       case "say":
         return command.text;
+
+      case "alerts-on":
+        if (!deps.alerts) return messages.alertsUnavailable();
+        deps.alerts.subscribe(waId);
+        return messages.alertsOn(`${deps.appBaseUrl ?? "https://rail-pay.vercel.app"}/provider`);
+
+      case "alerts-off":
+        deps.alerts?.unsubscribe(waId);
+        return messages.alertsOff();
 
       case "answer":
         return messages.answers[command.topic]();

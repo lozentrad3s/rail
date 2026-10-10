@@ -12,6 +12,7 @@
 import { createPublicClient, erc20Abi, http, type Address } from "viem";
 import { monadTestnet } from "viem/chains";
 
+import { AlertSubscribers, watchRequests } from "./alerts.ts";
 import { claudeAssistant } from "./assistant.ts";
 import { loadConfig } from "./config.ts";
 import type { Deps } from "./handle.ts";
@@ -40,6 +41,10 @@ const deps: Deps = {
   currency: config.currency,
   appBaseUrl: process.env.APP_BASE_URL ?? "https://rail-pay.vercel.app",
   log,
+  alerts:
+    config.transport === "telegram"
+      ? new AlertSubscribers(process.env.ALERTS_FILE?.trim() || ".alerts.json")
+      : undefined,
   // Optional. Without a key the bot still understands natural language through understand.ts.
   assistant: process.env.ANTHROPIC_API_KEY?.trim()
     ? claudeAssistant({ apiKey: process.env.ANTHROPIC_API_KEY.trim(), log })
@@ -70,6 +75,22 @@ if (config.transport === "telegram") {
     log(`${new Date().toISOString()} bot listening transport=telegram mode=polling as=@${username}`);
 
     onSignal(() => process.exit(0));
+
+    // New requests go to every chat that said "alerts". Public facts only, read from the indexer.
+    if (deps.alerts) {
+      watchRequests({
+        subscribers: deps.alerts,
+        indexerUrl:
+          process.env.INDEXER_URL?.trim() || "https://indexer.dev.hyperindex.xyz/c7bc807/v1/graphql",
+        providerUrl: `${deps.appBaseUrl ?? "https://rail-pay.vercel.app"}/provider`,
+        head: () => publicClient.getBlockNumber(),
+        send: (chatId, text) => client.sendText(Number(chatId.replace(/^tg:/, "")), text),
+        log,
+        running: () => !stopping,
+      });
+      log(`${new Date().toISOString()} alerts watching subscribers=${deps.alerts.all.length}`);
+    }
+
     await pollForever({ deps, client, log, running: () => !stopping });
   } else {
     // Webhook mode exists for when there is a public URL; polling needs none, which is why it is

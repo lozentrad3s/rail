@@ -21,7 +21,9 @@ export type Command =
   | { kind: "about" }
   | { kind: "remove"; contactName: string }
   | { kind: "confirm" }
-  | { kind: "decline" };
+  | { kind: "decline" }
+  | { kind: "alerts-on" }
+  | { kind: "alerts-off" };
 
 /** A run of 8–11 digits is an account number in every market we serve. */
 const LOOKS_LIKE_ACCOUNT = /(?<!\d)\d{8,11}(?!\d)/;
@@ -33,6 +35,9 @@ export function parseCommand(raw: string): Command {
   const lower = text.toLowerCase();
 
   if (lower === "help" || lower === "/help" || lower === "?") return { kind: "help" };
+  // For providers. "/start alerts" is what a t.me/RailpayBot?start=alerts link sends.
+  if (/^(?:\/?alerts(?: on)?|\/start alerts|provider alerts|turn on alerts)$/.test(lower)) return { kind: "alerts-on" };
+  if (/^(?:\/?alerts off|stop alerts|turn off alerts)$/.test(lower)) return { kind: "alerts-off" };
   if (GREETINGS.has(lower)) return { kind: "welcome" };
   if (lower === "balance" || lower === "bal") return { kind: "balance" };
   if (lower === "contacts" || lower === "contact" || lower === "list") return { kind: "contacts" };
