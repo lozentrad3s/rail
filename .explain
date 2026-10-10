@@ -6,7 +6,7 @@ sealed-bid auction to deliver it, and whatever they do not take comes back to th
 
 Written for: judges, and anyone picking this repo up cold.
 
-Last updated 5 October 2026. 61 commits since 16 September.
+Last updated 10 October 2026. 79 commits since 16 September.
 
 ---
 
@@ -14,74 +14,74 @@ Last updated 5 October 2026. 61 commits since 16 September.
 
 Sending $200 to sub-Saharan Africa costs **8.46%** on average. The global average is **6.36%**.
 Those are World Bank figures, Remittance Prices Worldwide Q3 2025, and they have barely moved in a
-decade despite three hundred fintechs promising otherwise.
+decade despite years of fintechs promising otherwise.
 
 The cost is not in the technology. Moving a dollar between two databases is free. The cost is that
 **the price is set by whoever you happened to sign up with**, and you cannot see what anybody else
 would have charged. Each provider quotes a rate, hides a margin inside it, and the sender has no way
-to make them compete. Signing up takes days, money sits for three, and fees are quoted as "zero" with
-the real charge buried in the exchange rate.
+to make them compete.
 
 Rail does not try to be a cheaper provider. **It makes providers bid against each other for the job,
-in the open, on every single transfer.**
+in the open, on every single transfer** — and it replaces "trust this provider you have never heard
+of" with collateral, escrow and settlement anyone can check.
 
 ---
 
 ## 2. How it works
 
-Seven steps. Nothing here is aspirational; all of it runs on Monad testnet today.
+Seven steps, all running on Monad testnet today.
 
 1. **A sender escrows dollars.** One EIP-3009 `receiveWithAuthorization` signature moves AUSD into
    `RailCore`. The sender pays no gas: a relayer submits it and is reimbursed from a declared fee.
 2. **An auction opens.** Every escrowed transfer is public the moment it exists.
 3. **Providers bid sealed.** `commitBid(orderId, commitment)` where the commitment is
-   `keccak256(orderId, lp, amount, salt)`. Nobody can see anyone else's price, so nobody can undercut
-   by a cent.
+   `keccak256(orderId, lp, amount, salt)`. Nobody can see anyone else's price.
 4. **They reveal.** `revealBid(orderId, amount, salt)`. The leading bid locks collateral at **110%**
    of itself. A bid whose provider has not staked enough is skipped even if it was lowest.
-5. **The winner collects the account number.** Only the winner can, and they prove it with a
-   signature over `"Rail payout details\norder: …\nissuedAt: …"`. The relayer checks that address
-   against `order.winner` on chain before it hands anything over.
+5. **The winner collects the account number.** Only the winner can, proved by a signature the
+   relayer checks against `order.winner` on chain.
 6. **They pay from their own bank.** Entirely off Rail, on their own licence, with a reference like
    `RAILA8BEFD38`. **Rail never touches naira.**
-7. **Settlement.** The winner calls `markPaid`, which opens a dispute window. When it closes,
-   **anyone** can call `finalize`: the winner receives exactly their bid, and `maxAusd − bid` returns
-   to the sender. If they never pay, **anyone** calls `refund` and their collateral is slashed to the
-   sender.
+7. **Settlement.** The winner calls `markPaid`. A Chainlink CRE workflow checks the bank feed and,
+   if every node agrees the money landed, an attestation releases the escrow at once; otherwise a
+   dispute window runs and **anyone** can `finalize` when it closes. The winner receives exactly its
+   bid and `maxAusd − bid` returns to the sender. If the provider never pays, **anyone** calls
+   `refund` and its collateral is slashed to the sender.
 
-### The number that makes it a product
+### Measured on the live pilot
 
-A sender sets a ceiling. Providers undercut each other below it. The difference is returned, every
-time, by the contract. The protocol takes no cut of the spread, which is why providers have nothing
-to gain by colluding with us: there is no "us" in the price.
+Three orders on 9–10 October, two independent provider bots bidding against each other:
+
+| Order | Created → settled | CRE attested before the window closed by | Returned to sender |
+|---|---|---|---|
+| `0x8f0f289f…` | 511 blocks (~154s) | — (attested 2 blocks late; settled by the window) | $0.45 |
+| `0xa9fb426c…` | 363 blocks (~110s) | 148 blocks | $0.45 |
+| `0x7e8678da…` | 410 blocks (~124s) | 103 blocks | $0.45 |
+
+About two minutes, end to end, of which ~91 seconds is the sealed auction itself. The provider bots'
+bank payouts are **simulated** on the pilot; everything else in that table happened on chain.
 
 ---
 
 ## 3. The nine invariants
 
-These are in `CLAUDE.md` and every change in this repo is checked against them. They are the reason
-the architecture looks the way it does.
+These are in `CLAUDE.md` and every change in this repo is checked against them.
 
-1. **Rail never holds, moves, or touches fiat.** No contract, service or bot may custody local
-   currency. Providers pay from their own accounts under their own licences. This is the whole
-   regulatory argument.
+1. **Rail never holds, moves, or touches fiat.** Providers pay from their own accounts under their
+   own licences. This is the whole regulatory argument.
 2. **Chat proposes; the sender's own key authorises.** The bot holds no signing key and has no code
    path to any endpoint that moves funds. A test drives every command past a stub relayer and asserts
    `/v1/orders` is never reached.
-3. **No PII on-chain.** Bank details appear only as a salted `keccak256` commitment. A ten-digit
-   NUBAN without a salt is brute-forced in seconds.
-4. **`finalize`, `refund` and `claim` are permissionless.** No owner, pause or allowlist can block
-   them. *"What if your backend dies?"* → *"Nothing. Anyone can finalize."*
+3. **No PII on-chain.** Bank details appear only as a salted `keccak256` commitment.
+4. **`finalize`, `refund` and `claim` are permissionless.** *"What if your backend dies?"* →
+   *"Nothing. Anyone can finalize."*
 5. **The sender captures the auction saving.**
 6. **A provider always has more locked than it could steal.** 110% collateral, slashed to the wronged
    sender rather than to a treasury.
-7. **Reputation is derived, never written.** Counters incremented only by `RailCore`. No setter
-   exists and none may be added.
-8. **The optimistic layer is never removed.** Attestors can only *accelerate* settlement, never block
-   it. If every attestor vanishes, orders still settle.
+7. **Reputation is derived, never written.** Counters incremented only by `RailCore`.
+8. **The optimistic layer is never removed.** Attestors can only *accelerate* settlement.
 9. **One signature from the sender.** Order parameters are hashed into the EIP-3009 nonce, so a
-   relayer cannot alter the recipient, amount, currency or attestor without invalidating the
-   signature it is carrying.
+   relayer cannot alter the recipient, amount, currency or attestor.
 
 ---
 
@@ -90,45 +90,45 @@ the architecture looks the way it does.
 | Part | Stack | Tests |
 |---|---|---|
 | `contracts/` | Solidity 0.8.26, Foundry, OpenZeppelin v5 | **47**, 32 adversarial |
-| `services/relayer/` | TypeScript, Node type-stripping, viem | **72** |
-| `services/matcher/` | TypeScript, provider bidding bot | **12** |
-| `bot/` | TypeScript, Telegram + WhatsApp transports | **89** |
+| `services/relayer/` | TypeScript, Node type-stripping, viem | **87** |
+| `services/matcher/` | TypeScript, provider bidding bot | **16** |
+| `bot/` | TypeScript, Telegram + WhatsApp transports | **114** |
 | `web/` | Next.js 16, React 19, Tailwind 4, Motion | e2e via Chrome + WebAuthn |
 | `cre/` | Chainlink CRE workflow, TypeScript SDK | **15** |
 | `indexer/` | Envio HyperIndex | signature check |
 
-**235 automated tests.** No part of the money path is untested.
+**279 automated tests.**
 
 ### Contracts
 
-Three, all under 24KB:
-
-- **`RailCore`** — escrow, commit–reveal auction, settlement, dispute, refund.
-- **`LPRegistry`** — provider stake, collateral locking, slashing, append-only reputation.
-- **`SignedAttestor`** — layered attestations that can accelerate settlement.
-
-Attack tests are written **before** implementation. Every one carries a one-line comment stating the
-attack in plain English: a relayer swapping the attestor, a stranger disputing someone else's
-transfer, a forged dispute signature, a winner trying to beat its own dispute window, an attestor
-that reverts or burns gas or returns megabytes.
+`RailCore` (escrow, auction, settlement, dispute, refund), `LPRegistry` (stake, collateral,
+slashing, append-only reputation), `SignedAttestor` (layered attestations that can accelerate
+settlement). Attack tests are written before implementation, each with a one-line comment stating
+the attack in plain English.
 
 ### Services
 
-The relayer quotes, submits, and holds recipient bank details encrypted at rest. It holds MON for
-gas and **nothing else**. It reads the sender's balance before it simulates anything, so somebody
-who is short is told *"you need $17.65 more"* before they approve, not *"this would not go
-through"* after. The matcher is the provider bot: it watches for orders over a WebSocket,
-prices them, bids, reveals, collects the account number and confirms payment.
+The **relayer** quotes, submits, and holds recipient bank details encrypted at rest. It holds MON for
+gas and nothing else. Its **sweeper** refunds any auction nobody bid on and finalizes any order whose
+window has closed — those calls are permissionless, which in practice meant nobody made them until an
+empty auction left a sender's $76.63 in escrow for a day. On the testnet it also tops up practice
+dollars from Agora's faucet for accounts that hold no MON.
+
+The **matcher** is the provider bot: it watches for orders over a WebSocket, prices them, bids,
+reveals and confirms. Two run on Railway with different margins; on the pilot their payouts are
+simulated and recorded where the CRE workflow can check them.
 
 ### The chat bot
 
-Nine structured commands: `send`, `add`, `contacts`, `remove`, `balance`, `rate`, `fund`, `about`,
-`help`. Deliberately **not** an AI assistant: those are banned on the WhatsApp Business Platform and
-are the wrong shape for payments anywhere. Anything unrecognised becomes `help`, never a guess.
+People write "can you send 20k to my mum please" and "is this safe?", not commands, so the bot
+understands everyday phrasing and answers questions about Rail in full sentences. It stays a payments
+bot, never a general assistant (banned on the WhatsApp Business Platform since January 2026):
+off-topic requests get a polite redirect, and anything that moves money still becomes a link the
+sender approves with Face ID. An optional Claude layer widens what it can follow; it cannot act,
+never sees a run of 8+ digits, and a reply using crypto vocabulary is discarded.
 
-Telegram is the pilot transport because it needs no business verification and, with long polling, no
-public URL. WhatsApp is the same brain behind a webhook, waiting on Meta. `handle.ts`, `commands.ts`
-and `messages/` know nothing about which chat they are speaking into.
+Providers say `alerts` and every new request arrives in their chat within seconds, with the amount,
+the sender's ceiling, the time left and a link to bid.
 
 ---
 
@@ -137,58 +137,54 @@ and `messages/` know nothing about which chat they are speaking into.
 ### Monad
 
 Not a deployment target, a **requirement**. A sealed-bid auction needs two rounds, because on a
-transparent ledger a bid is public the moment it lands in a block. Two rounds inside a payment is
-only affordable where blocks are **302ms** (measured over a 1000-block sample, not quoted) and fees
-are near zero. On a chain with twelve-second blocks and dollar gas, a sealed auction on a $37
-transfer is absurd. That is why nobody has done this.
+transparent ledger a bid is public the moment it lands. Two rounds inside a payment is only
+affordable where blocks are **302ms** (measured over 1000 blocks) and fees are near zero. On a chain
+with twelve-second blocks and dollar gas, a sealed auction on a $38 transfer is absurd.
 
 ### Agora — AUSD
 
-The settlement asset, chosen for **native EIP-3009**. That is what lets a sender who has never
-touched crypto sign one authorisation and pay no gas. The EIP-712 domain is read from the asset
-itself at signing time rather than hardcoded, because a wrong domain is a signature that verifies
-nowhere, discovered at the worst possible moment.
+The settlement asset, chosen for **native EIP-3009**: a sender who has never touched crypto signs
+one authorisation and pays no gas. The EIP-712 domain is read from the asset at signing time rather
+than hardcoded. Agora's test faucet funds practice accounts in one tap.
 
 ### Mera — passkeys
 
-The account layer for somebody who has never held crypto. `createPasskeyWithPrfOutput` → PRF output → BIP-39 → HDKey
-`m/44'/60'/0'/0/{index}` → secp256k1 → a viem account that signs EIP-712. **No private key is ever
+The account layer for somebody who has never held crypto. `createPasskeyWithPrfOutput` → PRF output →
+BIP-39 → HDKey `m/44'/60'/0'/0/{index}` → a viem account that signs EIP-712. **No private key is ever
 stored**; the signing session is ended immediately in every path including failure.
 
-**One passkey, many keys:** index 0 is the spending account and index 1 is a savings account,
-derived from the *same* PRF output with no second passkey and no second prompt. An e2e test with a
-Chrome virtual authenticator asserts the derivation is deterministic, because if it ever stops being
-so, people lose access to their money.
+**One passkey, many keys:** index 0 is the spending account and index 1 a savings account, derived
+from the *same* PRF output with no second passkey and no second prompt. An e2e test with a Chrome
+virtual authenticator asserts the derivation is deterministic.
 
-**The second door.** Somebody who already has an EVM wallet can connect it at `/connect` instead.
-Wallets are discovered through EIP-6963, not `window.ethereum`: with several extensions installed
-they overwrite each other on that one global, and the loser can resolve to a proxy that never
-answers. Either way the key is the sender's own and the bot has never held it, which is all
-invariant 2 asks. The passkey path stays, because a person with no wallet is the entire point.
+### Dynamic — provider sign-in
 
-### Chainlink CRE
+Providers sign in on `/provider` through Dynamic: a browser wallet, a phone wallet over
+WalletConnect, or just an email, which creates a wallet the provider holds. Every protocol call on
+the page takes the viem `WalletClient` Dynamic returns, switched to Monad testnet before each write.
+Dynamic loads on the provider route only, so senders never download it and their passkey path is
+unchanged.
 
-A decentralised attestor. Today the attestation comes from one signer, which is the weakest part of
-the design. The workflow has each DON node query a Nigerian bank aggregator itself and attest only
-on **unanimous** agreement.
+### Chainlink CRE — the payout attestor
 
-`identical` consensus is the strictest option available, and it is affordable *because of invariant
-8*: a DON that disagrees means the optimistic window settles the order slightly later. The failure
-mode is "slower", never "stuck", so the correct bias is to say nothing unless certain. A node that
-cannot reach the bank throws rather than voting "not paid" — those are different claims, and
-conflating them would slash a provider who did pay.
+The workflow (`cre/payout-attestor`) is an HTTP-triggered DON job: every node queries the bank feed
+for the order's reference and the DON attests only on **identical** agreement — the strictest
+consensus, affordable because of invariant 8 (disagreement means "slower", never "stuck"). A node
+that cannot reach the bank throws rather than voting "not paid".
 
-### Envio
+It runs in the CRE simulator: deployment needs Early Access, and CRE has no Monad forwarder yet. A
+relay (`relay.ts`) watches for paid orders, runs the compiled workflow against the winning provider's
+feed, and only on `attested: true` signs a layer-3 attestation with a key `SignedAttestor`
+authorises, then finalizes. That key is the remaining trust point until a forwarder exists; it can
+only make settlement sooner, never cause a refund or a slash.
 
-HyperIndex over all four deployments in one dataset. `scripts/check.mjs` verifies all 18 event
-signatures against the deployed ABIs, so the indexer cannot silently drift from the contracts.
+### Envio — HyperIndex
 
-### Alchemy
-
-The public Monad RPC caps `eth_getLogs` at **100 blocks** — measured, not assumed, after a 413 in a
-browser console revealed both the dashboard and the provider feed were silently returning nothing.
-A dedicated endpoint removes that cap and the inclusion-latency variance that forced the auction
-windows wider than the mechanism needs.
+One indexer over all four deployments, and it is load-bearing in four places: the sender dashboard
+reads history by sender (so the same account shows the same transfers on every device), the provider
+page reads open requests and wins, the relayer's sweeper finds stranded orders, and the bot's
+provider alerts come from it. `scripts/check.mjs` verifies every event signature against the
+deployed ABIs.
 
 ---
 
@@ -196,24 +192,20 @@ windows wider than the mechanism needs.
 
 **Why the sender never sees crypto vocabulary.** A grep over the sender UI and every bot string must
 return zero hits for `wallet`, `gas`, `crypto`, `token`, `AUSD`, `Monad` and twenty more. Partly
-because WhatsApp's commerce policy makes a currency word a ban risk for the number; mostly because
-somebody sending money to their mother is not shopping for a financial product.
+WhatsApp's commerce policy; mostly because somebody sending money to their mother is not shopping for
+a financial product.
 
 **Why 150-block windows, when 30 was measured as enough.** Thirty blocks is twelve seconds:
 comfortable for a bot, impossible for a person. A window only software can reach makes this a
-professionals-only market, which is the thing Rail exists to replace. A bot loses nothing. Settlement
-costs ninety seconds instead of twenty-four. That is the right trade for a market anyone can join.
+professionals-only market, which is the thing Rail exists to replace.
 
 **Why there is nothing to deposit.** A prepaid balance would have to be spendable by something. If
-the bot can spend it, invariant 2 is gone and whoever takes over your chat drains it. If you still
-sign per order, the deposit saved nothing. So the money stays in the sender's own account until the
+the bot can spend it, invariant 2 is gone. So the money stays in the sender's own account until the
 authorisation pulls exactly what the transfer costs.
 
-**Why a dispute currently favours the sender.** Without an attestation, a dispute that outlives the
-resolution window slashes the provider whether or not they paid. A test asserts this and it passes,
-which is the problem: it is why the CRE work is load-bearing rather than decorative. The dispute
-window stays short until the attestor is deployed, because lengthening it without one would simply
-move who loses.
+**Why nobody can bid for a provider.** The contract checks that a bid comes from the key that
+staked, which is what makes the collateral mean anything. Autopilot on the provider page signs with
+the provider's own wallet; a hands-free bot holds its own dedicated key.
 
 ---
 
@@ -223,39 +215,35 @@ move who loses.
 |---|---|
 | App | https://rail-pay.vercel.app |
 | Chat | https://t.me/RailpayBot |
-| Relayer | https://rail-pay-production.up.railway.app |
 | Provider | https://rail-pay.vercel.app/provider |
+| Relayer | https://rail-pay-production.up.railway.app |
 | Code | https://github.com/lozentrad3s/rail |
 
-Monad testnet, chain 10143. Addresses in `docs/DEPLOYMENTS.md`, which records why each redeployment
-happened and what was measured to justify it.
+Monad testnet, chain 10143. Addresses in `docs/DEPLOYMENTS.md`.
 
 ### Trying it
 
-**As a sender:** open the chat, `add mum`, choose **Test Bank (test mode only)** and any account
-number, then `send 50k to mum` and approve on your phone. Already have a wallet? Approve with it
-instead: the app offers both.
+**As a sender:** open the app, set up with Face ID, tap **Add $10,000 practice money**. In the chat,
+`add mum` (or dad, or a friend), choose **Test Bank (test mode only)** and any account number, then
+`send 50k to mum` and approve on your phone. Your dashboard shows it running, then delivered.
 
-**As a provider:** `/provider`, connect a wallet, stake at least $100, and bid inside the 45-second
-commit window.
+**As a provider:** `/provider`, sign in with Dynamic (wallet or email), get test AUSD and MON, stake
+at least $100. Requests appear live with a suggested bid from your margin; turn on alerts, or say
+`alerts` to the Telegram bot.
 
 ---
 
 ## 8. What is not finished
 
-Stated plainly, because a judge will find these anyway.
-
-- **CRE simulation is unrun.** The workflow is written and its rules are tested, but
-  `cre workflow simulate` requires authentication and Chainlink's auth service returns a 500 on token
-  refresh. Not our bug, and not worked around.
+- **CRE is simulated, not deployed.** Deployment needs Early Access; a relay key carries the DON's
+  verdict to Monad until there is a forwarder.
+- **The pilot's provider payouts are simulated.** The two bots record the transfer they would have
+  made; no naira moves.
 - **WhatsApp is pending Meta's business verification.** The transport is built and tested.
-- **History is per-device.** The 100-block log cap means a sender's dashboard reads orders this
-  device recorded. The honest fix is the indexer or a relayer endpoint keyed by sender.
 - **Paystack is in test mode**, which permits three live bank resolves per day. Hence the test bank.
-- **No audit.** Testnet, play money, and nobody should put real savings behind it yet.
+- **No audit.** Testnet, practice money, and nobody should put real savings behind it yet.
 
 ---
 
-*Rail is not another fintech promising a better rate. It is the mechanism that makes three hundred
-of them compete for one transfer, in the open, and hands the difference back to the person who sent
-it.*
+*Rail is not another fintech promising a better rate. It is the mechanism that makes providers
+compete for every transfer, in the open, and hands the difference back to the person who sent it.*
