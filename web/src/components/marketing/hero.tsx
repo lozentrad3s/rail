@@ -14,7 +14,6 @@ export function Hero() {
       <Container className="grid items-center gap-14 pb-20 pt-28 sm:pt-32 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16 lg:pb-24 lg:pt-36">
         <div className="max-w-[42rem]">
           <Eyebrow tone="night">
-            <span className="size-1.5 rounded-full bg-signal" />
             {site.pilotLabel} · UK &amp; US → Nigeria · more corridors next
           </Eyebrow>
 

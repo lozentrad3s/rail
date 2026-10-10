@@ -13,7 +13,6 @@ export function Closing() {
       <Container className="chapter-pad text-center">
         <Reveal className="mx-auto max-w-[44rem]">
           <Eyebrow tone="night">
-            <span className="size-1.5 rounded-full bg-signal" />
             {site.pilotLabel}
           </Eyebrow>
           <h2 id="closing-title" className="mt-6 text-display">
