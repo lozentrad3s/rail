@@ -42,6 +42,11 @@ export function DynamicRoot({ children }: { children: ReactNode }) {
       settings={{
         environmentId: DYNAMIC_ENVIRONMENT_ID,
         appName: "Rail providers",
+        // Connect, don't create a Dynamic account. In connect-and-sign the environment's onboarding
+        // demanded a verified email from every wallet before the page was usable — friction a
+        // provider with MetaMask should never meet, and personal data Rail has no use for: the
+        // relayer authenticates each request by its own signature. Email sign-in still works.
+        initialAuthenticationMode: "connect-only",
         walletConnectors: [EthereumWalletConnectors],
         overrides: { evmNetworks: [MONAD_TESTNET] },
       }}
