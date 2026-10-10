@@ -254,7 +254,7 @@ export const answers = {
 
   speed: (): string =>
     [
-      "On the pilot, usually under two minutes from your approval to delivered.",
+      "On the pilot, about two minutes from your approval to delivered.",
       "",
       "Providers get about 45 seconds to place sealed bids and another 45 to reveal them. The winner then pays your family's bank and the payment is confirmed.",
       "",

@@ -119,15 +119,16 @@ export const demo = {
   feeCents: 13,
   collateralBps: 11_000,
   /**
-   * How long "delivered" takes, said as a ceiling rather than a stopwatch.
+   * How long "delivered" takes, said as an approximation rather than a stopwatch.
    *
    * It said 41 seconds, which the auction alone cannot meet: commit and reveal are ~91s before any
    * provider is chosen. Measured on 9 Oct 2026 (order 0xa9fb426c…): created → settled in 363 blocks,
    * about 110s, with the CRE attestation releasing it 148 blocks before the dispute window would
    * have. Without an attestation it is ~2.5 minutes, and a provider paying by hand from a bank app
-   * takes longer still, so this is the pilot's number and the copy says "under", never a stopwatch.
+   * takes longer still. A third run on 10 Oct (0x7e8678da…) took 410 blocks, about 124s, so the copy
+   * says "about", not "under": the measured runs sit either side of two minutes.
    */
-  deliveredLabel: "under 2 minutes",
+  deliveredLabel: "about 2 minutes",
 } as const;
 
 /** World Bank Remittance Prices Worldwide, Issue 54 (Q3 2025): cost of sending $200 to sub-Saharan Africa. */

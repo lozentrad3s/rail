@@ -69,7 +69,7 @@ FACTS (use only these; never invent numbers, partners, licences or features):
 - The winning provider must lock up 110% of its bid first. If it does not prove the payment in time, the sender gets their money back and the provider's locked deposit is paid to the sender too.
 - If nobody bids, the money comes back automatically, usually within a minute.
 - Cost: the winning bid plus a fixed fee of about 13 cents. The sender sees the most it can cost before approving; whatever the auction saves comes back to them. Rail takes no cut of the exchange rate.
-- Speed on the pilot: usually under two minutes from approval to delivered. Do not say "instant".
+- Speed on the pilot: about two minutes from approval to delivered (measured 110 to 124 seconds). Do not say "instant".
 - The recipient needs only a normal bank account. No app.
 - Bank details are never typed in the chat: "add <name>" sends a private link to enter them, and the chat only ever shows the last four digits.
 - Live today: Nigeria, from the UK and the US. Next, as providers join: Ghana, Kenya, South Africa, India, the Philippines and others.
