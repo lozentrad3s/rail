@@ -48,8 +48,9 @@ function must(body: Record<string, string | undefined>, field: string): string {
 }
 
 // 1. What will this cost?
-const quote = await api("/v1/quote?currency=NGN&localAmount=5000000");
-console.log(`quote     ₦50,000 → at most ${dollars(must(quote, "maxAusd"))} plus ${dollars(must(quote, "fee"))} fee`);
+// Kobo. ₦50,000 by default; LOCAL_AMOUNT=1000000000 sends ₦10,000,000.
+const quote = await api(`/v1/quote?currency=NGN&localAmount=${process.env.LOCAL_AMOUNT ?? "5000000"}`);
+console.log(`quote     ₦${(Number(process.env.LOCAL_AMOUNT ?? "5000000") / 100).toLocaleString()} → at most ${dollars(must(quote, "maxAusd"))} plus ${dollars(must(quote, "fee"))} fee`);
 
 // 2. Where is it going? The bank details never reach the chain — only a salted hash does.
 const recipient = {
