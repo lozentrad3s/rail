@@ -86,8 +86,11 @@ const currencyOf = (raw: Hex) => Buffer.from(raw.slice(2), "hex").toString("asci
  * Compiled once, up front. Compiling inside every simulation cost ~40 of its ~55 seconds, which on
  * the first live order put the attestation two blocks *after* the 200-block dispute window — so the
  * DON's verdict arrived, but too late to be the thing that settled it.
+ *
+ * CRE_WASM points at an already-built binary (`cre workflow build … --output`) and skips the build,
+ * for a machine short of the memory to compile while other work runs.
  */
-let wasm: string | undefined;
+let wasm: string | undefined = process.env.CRE_WASM?.trim() || undefined;
 function buildOnce(): string {
   if (wasm) return wasm;
   const out = join(mkdtempSync(join(tmpdir(), "cre-wasm-")), "payout-attestor.wasm");

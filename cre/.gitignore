@@ -7,3 +7,6 @@
 # Secret references live here. Untracked, so a real key added later cannot be committed by
 # accident — the file itself is a template the CRE CLI expects to exist.
 secrets.yaml
+
+# Files for recorded demo runs (payloads, a prebuilt WASM). Not source.
+demo/
