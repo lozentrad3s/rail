@@ -906,7 +906,17 @@ export function ProviderScreen() {
             <a href="https://t.me/RailpayBot" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
               @RailpayBot
             </a>{" "}
-            on Telegram and every new request comes to you there.
+            on Telegram and every new request comes to you there. Want it bidding around the clock with
+            no prompts?{" "}
+            <a
+              href="https://github.com/lozentrad3s/rail/tree/main/services/matcher#readme"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-4"
+            >
+              Run your own bidding bot
+            </a>
+            .
           </p>
         </div>
 
