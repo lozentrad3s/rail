@@ -34,6 +34,20 @@ export const STATUS_NAMES = [
   "Cancelled",
 ] as const;
 
+const OPEN = 1;
+const AWARDED = 2;
+const NO_WINNER = "0x0000000000000000000000000000000000000000";
+
+/**
+ * The status RailCore acts on, not the one it stores. Awarding is lazy: once the reveal window has
+ * closed, an order with a winner is `Awarded` to every function that checks, but storage keeps
+ * saying `Open` until the next write. Mirrors `RailCore._effectiveStatus`.
+ */
+export function derivedStatus(order: { status: number; revealEnd: bigint; winner: Address }, block: bigint): number {
+  if (order.status === OPEN && block > order.revealEnd && order.winner.toLowerCase() !== NO_WINNER) return AWARDED;
+  return order.status;
+}
+
 export type OrderIntent = {
   sender: Address;
   recipientCommitment: Hex;

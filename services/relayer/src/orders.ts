@@ -24,6 +24,7 @@ import {
   ausdAbi,
   CREATE_ORDER_GAS,
   currencyFromBytes3,
+  derivedStatus,
   railCoreAbi,
   STATUS_NAMES,
   type Authorization,
@@ -252,14 +253,20 @@ export async function payoutDetails(deps: OrderDeps, orderId: Hex, body: unknown
     throw new RelayerError("UNAUTHORIZED", "Signature does not match.");
   }
 
-  const order = await deps.publicClient.readContract({
-    address: deps.config.railCore,
-    abi: railCoreAbi,
-    functionName: "getOrder",
-    args: [orderId],
-  });
+  const [order, block] = await Promise.all([
+    deps.publicClient.readContract({
+      address: deps.config.railCore,
+      abi: railCoreAbi,
+      functionName: "getOrder",
+      args: [orderId],
+    }),
+    deps.publicClient.getBlockNumber(),
+  ]);
 
-  const live = order.status === 2 || order.status === 3 || order.status === 4;
+  // Derived, not stored: a winner asking before anyone has written to the order would otherwise
+  // be told they did not win (docs/INTERFACES.md §payout-details).
+  const status = derivedStatus(order, block);
+  const live = status === 2 || status === 3 || status === 4;
   if (!live || order.winner.toLowerCase() !== recovered.toLowerCase()) {
     throw new RelayerError("NOT_WINNER", "You are not the provider for this transfer.");
   }
