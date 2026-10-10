@@ -276,7 +276,13 @@ export type Win = {
   blocksToPay: bigint;
 };
 
-/** Order ids this provider won, from the indexer. Empty when it cannot be reached. */
+/**
+ * Orders this provider may have won, from the indexer. Empty when it cannot be reached.
+ *
+ * `Order.winner` alone misses the newest win: RailCore awards lazily, so no `OrderAwarded` event
+ * exists until something writes to the order, and a provider on a device that did not bid saw no
+ * win at all. Every order they revealed a bid on is a candidate too; the chain decides.
+ */
 async function wonFromIndexer(lp: Address): Promise<Hex[]> {
   try {
     const response = await fetch(INDEXER_URL, {
@@ -285,13 +291,17 @@ async function wonFromIndexer(lp: Address): Promise<Hex[]> {
       body: JSON.stringify({
         query: `query Won($lp: String!) {
           Order(where: { winner: { _ilike: $lp } }, order_by: { createdAt: desc }, limit: 10) { id }
+          Bid(where: { lp_id: { _ilike: $lp }, revealedBlock: { _is_null: false } }, order_by: { committedBlock: desc }, limit: 10) { order_id }
         }`,
         variables: { lp },
       }),
       signal: AbortSignal.timeout(6_000),
     });
-    const body = (await response.json()) as { data?: { Order?: { id: Hex }[] } };
-    return body.data?.Order?.map((order) => order.id) ?? [];
+    const body = (await response.json()) as { data?: { Order?: { id: Hex }[]; Bid?: { order_id: Hex }[] } };
+    return [
+      ...(body.data?.Order?.map((order) => order.id) ?? []),
+      ...(body.data?.Bid?.map((bid) => bid.order_id) ?? []),
+    ];
   } catch {
     return [];
   }
